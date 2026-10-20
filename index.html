@@ -437,6 +437,7 @@ body{background:radial-gradient(1200px 700px at 70% -20%,rgba(161,77,255,.35),tr
 .keys{font-size:.75rem;color:var(--mu);white-space:nowrap}
 @media(max-width:1100px){.keys{display:none}}
 .offline{background:rgba(255,77,94,.15);border:1px solid rgba(255,77,94,.6);color:#ffb3bb;border-radius:12px;padding:8px 12px;font-size:.85rem;margin-bottom:10px;text-align:center}
+.modlink{min-height:36px;font-size:.8rem;opacity:.55;border-color:transparent}
 @media (prefers-reduced-motion:reduce){*{animation:none!important}}
 </style>
 </head>
@@ -892,7 +893,7 @@ const t=S.teams.find(x=>x.id===w.tid);const others=rk.filter(r=>r.tid!==w.tid).s
 return '<div class="bigwin" style="--tc:'+w.color+'"><div class="bw-rays"></div><div class="bw-top">'+logo('tvl')+'</div><p class="bw-label">'+(w.full?'BINGO! · ':'')+'O GRANDE VENCEDOR</p><div class="bw-main"><div class="trophy-big xl">'+SVG.trophy+'</div><div class="bw-team"><span class="avatar huge" style="--tc:'+w.color+'">'+teamIcon(t)+'</span><h1 class="bw-name">'+esc(w.name)+'</h1><p class="bw-sub">'+(w.full?'CARTELA CHEIA':w.cells+' DE '+w.total+' CASAS')+'</p></div></div>'+(others.length?'<div class="bw-others">'+others.map(r=>{const o=S.teams.find(x=>x.id===r.tid);return '<span class="chip" style="--tc:'+r.color+'">'+r.rank+'.º '+teamIcon(o)+' '+esc(r.name)+' · '+r.cells+'/'+r.total+'</span>';}).join('')+'</div>':'')+'<p class="bw-thanks">Parabéns a todos! Foi um jantar incrível!</p></div>';}
 /* ---------- ENTRADA (telemóvel) ---------- */
 function joinView(){const saved=S.teams.find(t=>t.id===lsGet('bingo-minha-equipa'));
-if(ui.joinStep!=='teams')return '<div class="wrap joinw"><div class="center splash">'+logo('hero')+'<p class="tagline">Desafia a tua equipa.<br>Faz bingo. Diverte-te!</p><div class="joinbtns"><button class="lime big" data-a="joinEnter">ENTRAR</button>'+(saved?'<button class="outline big" data-a="joinGo" data-id="'+saved.id+'">Continuar como '+teamIcon(saved)+' '+esc(saved.name)+'</button>':'')+'</div><p class="foot">DIVERTE-TE. FAZ BINGO. GANHA!</p></div></div>';
+if(ui.joinStep!=='teams')return '<div class="wrap joinw"><div class="center splash">'+logo('hero')+'<p class="tagline">Desafia a tua equipa.<br>Faz bingo. Diverte-te!</p><div class="joinbtns"><button class="lime big" data-a="joinEnter">ENTRAR</button>'+(saved?'<button class="outline big" data-a="joinGo" data-id="'+saved.id+'">Continuar como '+teamIcon(saved)+' '+esc(saved.name)+'</button>':'')+'</div><p class="foot">DIVERTE-TE. FAZ BINGO. GANHA!</p>'+(SB?'<button class="ghost modlink" data-a="toMod">🔐 Moderador</button>':'')+'</div></div>';
 const sel=ui.joinPick;
 return '<div class="wrap joinw">'+logo('team')+'<div class="npanel n-pur" style="margin-top:14px"><h3 style="justify-content:center">Equipas</h3><p class="mu" style="text-align:center;margin:-4px 0 14px">Escolhe a tua equipa e prepara-te para o desafio!</p><div class="tgrid">'+S.teams.map(t=>'<button class="ttile'+(sel===t.id?' sel':'')+'" style="--tc:'+t.color+'" data-a="joinPick" data-id="'+t.id+'"><span class="em">'+teamIcon(t)+'</span><b>'+esc(t.name)+'</b></button>').join('')+'</div></div><div class="joinbtns"><button class="lime big" data-a="joinConfirm" '+(sel?'':'disabled')+'>CONFIRMAR EQUIPA</button><button class="ghost" data-a="joinBack">Voltar</button></div></div>';}
 /* ---------- EQUIPA (telemóvel) ---------- */
@@ -978,6 +979,7 @@ yes(){const k=ui.confirm;ui.confirm=null;act(k.fn);render();},
 ans(el){const tid=teamHash();if(!canAnswer(tid))return;const k=+el.dataset.v;writePick('a-'+tid,{sid:S.spin.id,i:S.spin.i,choice:k});toast('Resposta '+'ABC'[k]+' enviada!','ok');},
 fs(){const d=document.documentElement;try{(document.fullscreenElement?document.exitFullscreen():d.requestFullscreen&&d.requestFullscreen()).catch(()=>toast('O ecrã inteiro não está disponível aqui. Usa F11.','er'));}catch(e){toast('Usa F11 para ecrã inteiro.','er');}keepAwake();},
 login(){doLogin();},
+toMod(){location.hash='moderador';},
 logout(){if(sbClient)sbClient.auth.signOut();location.hash='';},
 /* entrada */
 joinEnter(){ui.joinStep='teams';ui.joinPick=lsGet('bingo-minha-equipa');render();},
