@@ -452,8 +452,8 @@ body{background:radial-gradient(1200px 700px at 70% -20%,rgba(161,77,255,.35),tr
 <!-- ===================== CONFIGURAÇÃO SUPABASE =====================
   1) No Supabase: Project Settings → API (ou "Connect").
   2) Copia o "Project URL" e a chave "anon public" e cola-os abaixo, entre as plicas.
-  A chave anon é pública por natureza: quem protege o jogo são as regras (RLS)
-  do ficheiro supabase-setup.sql. NUNCA coles aqui a chave "service_role".
+  A chave anon é pública por natureza. NUNCA coles aqui a chave "service_role".
+  O acesso de moderador é feito com a palavra-passe definida na app.
 ================================================================== -->
 <script>
 window.BINGO_SUPABASE={
@@ -626,16 +626,17 @@ collection(){return{onSnapshot(next){let alive=true;const load=async()=>{if(!ali
 load();const ch=sb.channel('escolhas').on('postgres_changes',{event:'*',schema:'public',table:'bingo_picks'},()=>load()).subscribe(st=>{if(st==='SUBSCRIBED')load();});chans.push(ch);
 const iv=setInterval(load,4000);return()=>{alive=false;clearInterval(iv);sb.removeChannel(ch);};}};}};}
 let sbClient=null,remoteExists=false;
-async function connectSupa(){try{sbClient=window.supabase.createClient(SB.url,SB.anonKey,{auth:{persistSession:true,autoRefreshToken:true}});
-const{data}=await sbClient.auth.getSession();isOwner=!!(data&&data.session);
-sbClient.auth.onAuthStateChange((ev,session)=>{const was=isOwner;isOwner=!!session;if(isOwner&&!was&&!remoteExists){if(!S.rev)S.rev=1;push();}render();});
+const MOD_HASH='ud9tqh7170';
+const pwHash=(str,seed=7)=>{let h1=0xdeadbeef^seed,h2=0x41c6ce57^seed;for(let i=0,ch;i<str.length;i++){ch=str.charCodeAt(i);h1=Math.imul(h1^ch,2654435761);h2=Math.imul(h2^ch,1597334677);}h1=Math.imul(h1^(h1>>>16),2246822507);h1^=Math.imul(h2^(h2>>>13),3266489909);h2=Math.imul(h2^(h2>>>16),2246822507);h2^=Math.imul(h1^(h1>>>13),3266489909);return (4294967296*(2097151&h2)+(h1>>>0)).toString(36);};
+async function connectSupa(){try{sbClient=window.supabase.createClient(SB.url,SB.anonKey,{auth:{persistSession:false,autoRefreshToken:false}});
+isOwner=lsGet('bingo-mod')===MOD_HASH;
 db=supaAdapter(sbClient);ref=db.doc('game/main');
 ref.onSnapshot(snap=>{if(!snap.exists){remoteExists=false;if(isOwner){if(!S.rev)S.rev=1;push();}return;}remoteExists=true;const next=parse(snap.data().json);if(next)adopt(next);});
 db.collection('picks').onSnapshot(q=>{const p={};q.docs.forEach(d=>{const x=d.data();if(x)p[d.id]=x;});setPicks(p);});
 render();}catch(e){console.warn(e);toast('Não foi possível ligar ao Supabase. Confirma o endereço e a chave.','er');}}
-async function doLogin(){const em=($('#lg_email')||{}).value||'',pw=($('#lg_pass')||{}).value||'';if(!em||!pw)return toast('Escreve o email e a palavra-passe.','er');
-const{error}=await sbClient.auth.signInWithPassword({email:em.trim(),password:pw});if(error)return toast('Login falhou: confirma o email e a palavra-passe.','er');toast('Bem-vindo, moderador!','ok');location.hash='moderador';render();}
-function loginView(){return '<div class="wrap joinw"><div class="center splash">'+logo('hero')+'<div class="npanel n-pur" style="width:100%;text-align:left"><h3>🔐 Moderador</h3><p class="mu" style="margin-bottom:12px">Entra com o utilizador que criaste no Supabase.</p><div style="display:grid;gap:10px"><input id="lg_email" type="email" autocomplete="username" placeholder="email"><input id="lg_pass" type="password" autocomplete="current-password" placeholder="palavra-passe"><button class="lime big" data-a="login">ENTRAR COMO MODERADOR</button></div></div><button class="ghost" data-a="toJoin">Sou de uma equipa</button></div></div>';}
+function doLogin(){const pw=($('#lg_pass')||{}).value||'';if(!pw)return toast('Escreve a palavra-passe.','er');if(pwHash(pw)!==MOD_HASH)return toast('Palavra-passe errada.','er');
+lsSet('bingo-mod',MOD_HASH);isOwner=true;if(!remoteExists){if(!S.rev)S.rev=1;push();}toast('Bem-vindo, moderador!','ok');location.hash='moderador';render();}
+function loginView(){return '<div class="wrap joinw"><div class="center splash">'+logo('hero')+'<div class="npanel n-pur" style="width:100%;text-align:left"><h3>🔐 Moderador</h3><p class="mu" style="margin-bottom:12px">Escreve a palavra-passe do moderador.</p><div style="display:grid;gap:10px"><input id="lg_pass" type="password" autocomplete="current-password" placeholder="palavra-passe"><button class="lime big" data-a="login">ENTRAR</button></div></div><button class="ghost" data-a="toJoin">Sou de uma equipa</button></div></div>';}
 (async function connect(){try{if(SB){connectSupa();return;}if(!window.claude||!window.claude.use)return;const[d,u]=await Promise.all([window.claude.use('db'),window.claude.use('user')]);
 if(u){try{isOwner=await u.isOwner();}catch(e){}}
 if(!d){render();return;}db=d;ref=db.doc('game/state');online=true;
@@ -829,7 +830,7 @@ function linksHTML(){const jl=baseLink()+'#jogar',jq=qrSVG(jl);return '<div clas
 function selectCode(id){const el=document.getElementById('lk_'+id);if(!el)return;const r=document.createRange();r.selectNodeContents(el);const sel=getSelection();sel.removeAllRanges();sel.addRange(r);toast('Link selecionado: copia-o manualmente.','ok');}
 /* ---------- 1. PREPARAR ---------- */
 function setupView(){const pal=C.COLORS,k=S.size*S.size;const locked=S.teams.filter(t=>pickState(t.id)==='locked').length;
-let h='<div class="wrap"><div class="head">'+logo('lg')+'<div class="sp"></div>'+syncPill()+'<button class="ghost" data-a="tv">📺 Abrir visão TV</button></div><div class="steps">';
+let h='<div class="wrap"><div class="head">'+logo('lg')+'<div class="sp"></div>'+syncPill()+'<button class="ghost" data-a="tv">📺 Abrir visão TV</button>'+(SB?'<button class="ghost" data-a="logout" title="Sair do modo moderador">Sair</button>':'')+'</div><div class="steps">';
 h+='<div class="card step"><h2><span class="num">1</span>Equipas <span class="mu" style="font-weight:600">('+S.teams.length+')</span></h2>'+S.teams.map(t=>'<div class="teamrow"><button class="swatch" style="background:'+t.color+'" data-a="pal" data-id="'+t.id+'" aria-label="Mudar cor"></button><input id="tn_'+t.id+'" data-tn="'+t.id+'" value="'+esc(t.name)+'" maxlength="24" aria-label="Nome da equipa"><button class="ghost" data-a="rmTeam" data-id="'+t.id+'" aria-label="Retirar equipa" '+(S.teams.length<=2?'disabled':'')+'>✕</button></div>'+(ui.pal===t.id?'<div class="palette">'+pal.map(p=>'<button style="background:'+p[1]+'" class="'+(t.color===p[1]?'sel':'')+'" data-a="setColor" data-id="'+t.id+'" data-c="'+p[1]+'" aria-label="'+p[0]+'"></button>').join('')+'</div>':'')).join('')+'<button data-a="addTeam" '+(S.teams.length>=8?'disabled':'')+'>+ Adicionar equipa</button></div>';
 h+='<div class="card step"><h2><span class="num">2</span>Regras</h2><div class="rules"><div><label class="mu" for="pool">Números no globo</label><select id="pool" data-pool>'+C.POOLS.filter(n=>n>=k).map(n=>'<option value="'+n+'"'+(S.pool===n?' selected':'')+'>'+n+' números'+(n===15?' (recomendado)':'')+'</option>').join('')+'</select></div><div><span class="mu">Cartela</span><div class="seg"><button class="'+(S.size===3?'on':'')+'" data-a="size" data-k="3">3×3</button><button class="'+(S.size===4?'on':'')+'" data-a="size" data-k="4" '+(S.pool<16?'disabled':'')+'>4×4</button></div></div>'+Object.entries(C.TYPES).map(([key,t])=>'<div><label class="mu" for="secs_'+key+'">'+t.icon+' Tempo '+t.label.toLowerCase()+' (s)</label><input id="secs_'+key+'" type="number" min="5" max="300" data-secs="'+key+'" value="'+S.secs[key]+'"></div>').join('')+'</div>';
 h+='<p class="note" style="margin-top:12px">Toca a sirene e sai um número. As equipas que o têm na cartela fazem o desafio dentro do tempo. Se cumprirem, a casa fica pintada. Se alguma equipa falhar, a bola volta ao globo e pode sair outra vez. <b>Ganha a primeira equipa a encher a cartela.</b> Se terminares antes, ganha quem tiver mais casas preenchidas.</p></div>';
@@ -895,7 +896,7 @@ return '<div class="bigwin" style="--tc:'+w.color+'"><div class="bw-rays"></div>
 function joinView(){const saved=S.teams.find(t=>t.id===lsGet('bingo-minha-equipa'));
 if(ui.joinStep!=='teams')return '<div class="wrap joinw"><div class="center splash">'+logo('hero')+'<p class="tagline">Desafia a tua equipa.<br>Faz bingo. Diverte-te!</p><div class="joinbtns"><button class="lime big" data-a="joinEnter">ENTRAR</button>'+(saved?'<button class="outline big" data-a="joinGo" data-id="'+saved.id+'">Continuar como '+teamIcon(saved)+' '+esc(saved.name)+'</button>':'')+'</div><p class="foot">DIVERTE-TE. FAZ BINGO. GANHA!</p>'+(SB?'<button class="ghost modlink" data-a="toMod">🔐 Moderador</button>':'')+'</div></div>';
 const sel=ui.joinPick;
-return '<div class="wrap joinw">'+logo('team')+'<div class="npanel n-pur" style="margin-top:14px"><h3 style="justify-content:center">Equipas</h3><p class="mu" style="text-align:center;margin:-4px 0 14px">Escolhe a tua equipa e prepara-te para o desafio!</p><div class="tgrid">'+S.teams.map(t=>'<button class="ttile'+(sel===t.id?' sel':'')+'" style="--tc:'+t.color+'" data-a="joinPick" data-id="'+t.id+'"><span class="em">'+teamIcon(t)+'</span><b>'+esc(t.name)+'</b></button>').join('')+'</div></div><div class="joinbtns"><button class="lime big" data-a="joinConfirm" '+(sel?'':'disabled')+'>CONFIRMAR EQUIPA</button><button class="ghost" data-a="joinBack">Voltar</button></div></div>';}
+return '<div class="wrap joinw">'+logo('team')+'<div class="npanel n-pur" style="margin-top:14px"><h3 style="justify-content:center">Equipas</h3><p class="mu" style="text-align:center;margin:-4px 0 14px">Escolhe a tua equipa e prepara-te para o desafio!</p><div class="tgrid">'+S.teams.map(t=>'<button class="ttile'+(sel===t.id?' sel':'')+'" style="--tc:'+t.color+'" data-a="joinPick" data-id="'+t.id+'"><span class="em">'+teamIcon(t)+'</span><b>'+esc(t.name)+'</b></button>').join('')+'</div></div><div class="joinbtns"><button class="lime big" data-a="joinConfirm" '+(sel?'':'disabled')+'>CONFIRMAR EQUIPA</button><button class="ghost" data-a="joinBack">Voltar</button>'+(SB?'<button class="ghost modlink" data-a="toMod">🔐 Moderador</button>':'')+'</div></div>';}
 /* ---------- EQUIPA (telemóvel) ---------- */
 function teamView(){const tid=teamHash(),t=S.teams.find(x=>x.id===tid);
 if(!t)return '<div class="wrap joinw"><div class="center splash">'+logo('team')+'<p style="margin-top:12px">Esta equipa já não existe neste jogo.</p><button class="lime big" data-a="toJoin">Escolher equipa</button></div></div>';
@@ -980,7 +981,7 @@ ans(el){const tid=teamHash();if(!canAnswer(tid))return;const k=+el.dataset.v;wri
 fs(){const d=document.documentElement;try{(document.fullscreenElement?document.exitFullscreen():d.requestFullscreen&&d.requestFullscreen()).catch(()=>toast('O ecrã inteiro não está disponível aqui. Usa F11.','er'));}catch(e){toast('Usa F11 para ecrã inteiro.','er');}keepAwake();},
 login(){doLogin();},
 toMod(){location.hash='moderador';},
-logout(){if(sbClient)sbClient.auth.signOut();location.hash='';},
+logout(){try{localStorage.removeItem('bingo-mod');}catch(e){}isOwner=false;location.hash='';render();},
 /* entrada */
 joinEnter(){ui.joinStep='teams';ui.joinPick=lsGet('bingo-minha-equipa');render();},
 joinPick(el){ui.joinPick=el.dataset.id;render();},
@@ -995,7 +996,7 @@ lock(){const tid=teamHash();if(S.phase!=='setup')return;writePick(tid,{card:card
 unpick(){const tid=teamHash();if(S.phase!=='setup')return;writePick(tid,{card:cardFor(tid),locked:false});}
 };
 document.addEventListener('click',e=>{const el=e.target.closest('[data-a]');if(!el||el.disabled)return;if(el.classList.contains('ov')&&e.target!==el)return;const f=A[el.dataset.a];if(f)f(el);});
-document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target&&(e.target.id==='lg_pass'||e.target.id==='lg_email')){doLogin();return;}if(e.key==='Escape'&&isMod()){ui.confirm=null;ui.edit=null;ui.links=false;render();return;}
+document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target&&e.target.id==='lg_pass'){doLogin();return;}if(e.key==='Escape'&&isMod()){ui.confirm=null;ui.edit=null;ui.links=false;render();return;}
 if(!isMod()||S.phase!=='playing'||ui.confirm||ui.edit!=null||ui.links)return;const tg=e.target;if(tg&&/^(INPUT|TEXTAREA|SELECT)$/.test(tg.tagName))return;if(e.ctrlKey||e.metaKey||e.altKey)return;
 const k=e.key.toLowerCase();if(k===' '||k==='enter'){e.preventDefault();if(!spinning(Date.now())&&C.remaining(S).length)A.spin();}
 else if(k==='t'){if(S.spin&&!spinning(Date.now()))S.timer?A.tStop():A.tStart();}
