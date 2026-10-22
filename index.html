@@ -68,7 +68,7 @@ details summary{cursor:pointer;font-weight:800;color:var(--or2);padding:6px 0;li
 details summary::-webkit-details-marker{display:none}
 .note{font-size:.88rem;color:var(--mu);line-height:1.45}
 /* cartelas */
-.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr));gap:12px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,250px),1fr));gap:12px}
 @media(max-width:600px){.cards{grid-template-columns:1fr 1fr;gap:8px}.bcard{padding:7px}.bgrid{gap:3px}.bc{border-radius:7px}.bc .n{font-size:1rem}.bhead b{font-size:.85rem}.dockin{gap:6px}.dockin>button{min-height:42px;padding:0 12px}.dockin .big{min-height:52px;font-size:1rem}.res b{font-size:.85rem}}
 .bcard{border-radius:18px;padding:10px;background:#0e0a17;border:2px solid var(--tc);box-shadow:0 0 0 1px rgba(0,0,0,.4),0 8px 30px -12px var(--tc);position:relative}
 .bcard.play{animation:glow 1.2s ease-in-out infinite alternate}
@@ -398,6 +398,7 @@ body{background:radial-gradient(1200px 700px at 70% -20%,rgba(161,77,255,.35),tr
 .lrow.main{border-width:3px}
 
 /* perguntas de escolha múltipla */
+.qopen{display:grid;gap:6px;margin:12px 0;padding:14px 16px;border-radius:16px;border:2px dashed rgba(190,242,100,.55);background:rgba(190,242,100,.07);text-align:left}.qopen b{font-size:1.05em}.qopen span{opacity:.85}.qopen .qans{margin-top:6px;font-size:1.15em;color:#bef264}
 .qopts{display:grid;gap:10px;margin:14px auto 4px;max-width:640px;text-align:left}
 .qopt{display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:16px;background:rgba(255,255,255,.04);border:2px solid rgba(161,77,255,.55);color:#fff;font-weight:800;font-size:clamp(1rem,1.6vw,1.4rem);min-height:56px;width:100%;box-shadow:none;text-align:left}
 .qopt .ql{width:38px;height:38px;flex:none;border-radius:50%;display:grid;place-items:center;font-weight:900;background:linear-gradient(180deg,#c48bff,#7a2bd6);color:#fff}
@@ -438,6 +439,7 @@ body{background:radial-gradient(1200px 700px at 70% -20%,rgba(161,77,255,.35),tr
 @media(max-width:1100px){.keys{display:none}}
 .offline{background:rgba(255,77,94,.15);border:1px solid rgba(255,77,94,.6);color:#ffb3bb;border-radius:12px;padding:8px 12px;font-size:.85rem;margin-bottom:10px;text-align:center}
 .modlink{min-height:36px;font-size:.8rem;opacity:.55;border-color:transparent}
+.comp{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
 @media (prefers-reduced-motion:reduce){*{animation:none!important}}
 </style>
 </head>
@@ -473,9 +475,9 @@ const TYPES={
 const COLORS=[['Abóboras','#ff7a1a','🎃'],['Morcegos','#a46bff','🦇'],['Fantasmas','#e9e6f5','👻'],['Bruxas','#2bd27a','🧙'],['Vampiros','#ff4057','🧛'],['Caveiras','#ffd23f','💀'],['Lobisomens','#3ec5ff','🐺'],['Múmias','#d2b48c','🧟']];
 const P=[
 ['O nabo assombrado','Antes das abóboras, que vegetal se usava na Irlanda para fazer lanternas de Halloween?',['Batata','Nabo','Melão'],1],
-['O pai do vampiro','Quem escreveu o romance «Drácula»?',['Bram Stoker','Edgar Allan Poe','Mary Shelley'],0],
+['O pai do vampiro','Quem escreveu o romance «Drácula»?',['Bram Stoker','Edgar Allan Poe','Mary Shelley'],0,true],
 ['A criadora do monstro','Quem escreveu «Frankenstein»?',['Stephen King','Bram Stoker','Mary Shelley'],2],
-['Tradição nossa','Como se chama a tradição portuguesa de 1 de novembro em que as crianças pedem de porta em porta?',['Pão-por-Deus','Magusto','Santos Populares'],0],
+['Tradição nossa','Como se chama a tradição portuguesa de 1 de novembro em que as crianças pedem de porta em porta?',['Pão-por-Deus','Magusto','Santos Populares'],0,true],
 ['Patas a mais','Quantas patas tem uma aranha?',['Seis','Oito','Dez'],1],
 ['O mascarado','Como se chama o assassino mascarado do filme «Halloween» (1978)?',['Freddy Krueger','Jason Voorhees','Michael Myers'],2],
 ['Here’s Johnny!','Em que filme de terror se ouve a frase «Here’s Johnny!»?',['The Shining','Psycho','It'],0],
@@ -504,83 +506,88 @@ const K=[
 ['Regresso aos anos 80','A equipa canta 20 segundos de uma música dos anos 80 escolhida pelo moderador.'],
 ['Fado assombrado','Um elemento canta 15 segundos de um fado à escolha, com a voz mais dramática possível.'],
 ['Embalar vampiros','A equipa canta uma canção infantil durante 15 segundos, com voz de monstro.']];
-const CH=[];for(let i=0;i<P.length;i++){CH.push(['pergunta',P[i][0],P[i][1],P[i][2][P[i][3]],P[i][2],P[i][3]]);if(M[i])CH.push(['mimica'].concat(M[i]));if(K[i])CH.push(['karaoke'].concat(K[i]));}
-const POOLS=[12,15,18,20,24,30];
+const CH=[];for(let i=0;i<P.length;i++){CH.push(['pergunta',P[i][0],P[i][1],P[i][2][P[i][3]],P[i][2],P[i][3],!!P[i][4]]);if(M[i])CH.push(['mimica'].concat(M[i]));if(K[i])CH.push(['karaoke'].concat(K[i]));}
+const COMP={pergunta:4,mimica:1,karaoke:1};const CARD_N=6,COLS=3;
+const DEF_POOL={pergunta:5,mimica:2,karaoke:2};
 const uid=()=>Math.random().toString(36).slice(2,8)+Date.now().toString(36).slice(-3);
-function fresh(){const s={v:5,rev:0,gid:uid(),eventName:'Bingo Halloween — NOS Retail',size:3,pool:15,secs:{pergunta:20,mimica:45,karaoke:45},
+function fresh(){const s={v:7,rev:0,gid:uid(),eventName:'Bingo Halloween — NOS Retail',poolT:Object.assign({},DEF_POOL),secs:{pergunta:20,mimica:45,karaoke:60},
 teams:COLORS.slice(0,5).map(c=>({id:'t'+uid(),name:c[0],color:c[1],icon:c[2]})),
-challenges:CH.map((c,i)=>({n:i+1,type:c[0],title:c[1],text:c[2],answer:c[3]||'',options:c[4]?c[4].slice():null,correct:c[5]||0})),
-cards:{},phase:'setup',draws:[],spin:null,timer:null,showAnswer:false,tieWinner:null,turn:0,logo:null};
+challenges:CH.map((c,i)=>({n:i+1,type:c[0],title:c[1],text:c[2],answer:c[3]||'',options:c[4]?c[4].slice():null,correct:c[5]||0,open:!!c[6]})),
+cards:{},phase:'setup',draws:[],spin:null,timer:null,showAnswer:false,tieWinner:null,logo:null};
 generateCards(s);return s;}
 function shuffle(a,rng){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(rng()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
-const poolNums=s=>s.challenges.filter(c=>c.n<=s.pool).map(c=>c.n);
-const typeMap=s=>{const m={};s.challenges.forEach(c=>m[c.n]=c.type);return m;};
-function cardScore(card,ty){const cnt={};card.forEach(n=>cnt[ty[n]]=(cnt[ty[n]]||0)+1);return Object.keys(cnt).length*10-Math.max(...Object.values(cnt))*4;}
-function generateCards(s,rng){rng=rng||Math.random;const k=s.size*s.size,nums=poolNums(s),T=s.teams,ty=typeMap(s);
-if(!T.length||nums.length<k){s.cards={};return{ok:true};}
+const byType=(s,t)=>s.challenges.filter(c=>c.type===t).map(c=>c.n);
+function poolByType(s){const o={};Object.keys(COMP).forEach(t=>{o[t]=byType(s,t).slice(0,Math.max(COMP[t],s.poolT[t]||0));});return o;}
+const poolNums=s=>Object.values(poolByType(s)).flat().sort((a,b)=>a-b);
+const typeOfN=(s,n)=>{const c=s.challenges.find(x=>x.n===n);return c?c.type:null;};
+function poolOk(s){return Object.keys(COMP).every(t=>byType(s,t).length>=COMP[t]);}
+function randomCard(s,rng,avoid){rng=rng||Math.random;const P=poolByType(s);let best=null;
+for(let a=0;a<20;a++){let c=[];Object.keys(COMP).forEach(t=>{c=c.concat(shuffle(P[t],rng).slice(0,COMP[t]));});c.sort((x,y)=>x-y);if(!avoid||avoid.join()!==c.join()){best=c;break;}best=c;}return best;}
+function generateCards(s,rng){rng=rng||Math.random;const T=s.teams;if(!T.length||!poolOk(s)){s.cards={};return{ok:true};}const P=poolByType(s);
 let best=null,bestScore=-1e9;
-for(let a=0;a<200;a++){let pool=[];while(pool.length<T.length*k)pool=pool.concat(shuffle(nums,rng));
-const cards={};let i=0;
-for(const t of T){const card=[];while(card.length<k){let j=i;while(j<pool.length&&card.includes(pool[j]))j++;
-if(j>=pool.length){const free=nums.filter(x=>!card.includes(x));pool.push(free[Math.floor(rng()*free.length)]);j=pool.length-1;}
-[pool[i],pool[j]]=[pool[j],pool[i]];card.push(pool[i]);i++;}cards[t.id]=card.sort((x,y)=>x-y);}
-let sc=0;const ids=T.map(t=>t.id);ids.forEach(id=>sc+=cardScore(cards[id],ty));
-for(let x=0;x<ids.length;x++)for(let y=x+1;y<ids.length;y++){const sh=cards[ids[x]].filter(n=>cards[ids[y]].includes(n)).length;if(sh===k)sc-=100;sc-=sh;}
+for(let a=0;a<150;a++){const cards={};T.forEach(t=>cards[t.id]=[]);
+Object.keys(COMP).forEach(ty=>{const k=COMP[ty],nums=P[ty];let pool=[];while(pool.length<T.length*k)pool=pool.concat(shuffle(nums,rng));let i=0;
+T.forEach(t=>{const card=cards[t.id];let got=0;while(got<k){let j=i;while(j<pool.length&&card.includes(pool[j]))j++;if(j>=pool.length){const free=nums.filter(x=>!card.includes(x));pool.push(free[Math.floor(rng()*free.length)]);j=pool.length-1;}[pool[i],pool[j]]=[pool[j],pool[i]];card.push(pool[i]);i++;got++;}});});
+T.forEach(t=>cards[t.id].sort((x,y)=>x-y));
+let sc=0;const ids=T.map(t=>t.id);for(let x=0;x<ids.length;x++)for(let y=x+1;y<ids.length;y++){const sh=cards[ids[x]].filter(n=>cards[ids[y]].includes(n)).length;if(sh===CARD_N)sc-=1000;sc-=sh*sh;}
 if(sc>bestScore){bestScore=sc;best=cards;}}
 s.cards=best;return{ok:true};}
-function randomCard(s,rng,avoid){rng=rng||Math.random;const k=s.size*s.size,nums=poolNums(s),ty=typeMap(s);let best=null,bs=-1e9;
-for(let a=0;a<25;a++){const c=shuffle(nums,rng).slice(0,k).sort((x,y)=>x-y);let sc=cardScore(c,ty)+rng();if(avoid&&avoid.join()===c.join())sc-=1000;if(sc>bs){bs=sc;best=c;}}return best;}
-function validCard(s,card){const k=s.size*s.size,set=new Set(poolNums(s));return Array.isArray(card)&&card.length===k&&new Set(card).size===k&&card.every(n=>Number.isInteger(n)&&set.has(n));}
+function validCard(s,card){if(!Array.isArray(card)||card.length!==CARD_N||new Set(card).size!==CARD_N)return false;const set=new Set(poolNums(s));if(!card.every(n=>Number.isInteger(n)&&set.has(n)))return false;
+const cnt={};card.forEach(n=>{const t=typeOfN(s,n);cnt[t]=(cnt[t]||0)+1;});return Object.keys(COMP).every(t=>(cnt[t]||0)===COMP[t]);}
 function pickFor(s,picks,tid){const p=picks&&picks[tid];return p&&p.gid===s.gid&&validCard(s,p.card)?p:null;}
 function cardOf(s,tid,picks){if(s.phase==='setup'){const p=pickFor(s,picks,tid);if(p)return p.card.slice().sort((a,b)=>a-b);}return s.cards[tid]||[];}
 const editable=s=>s.phase==='setup';
 function addTeam(s){if(!editable(s))return{ok:false,msg:'Só antes do jogo.'};if(s.teams.length>=8)return{ok:false,msg:'Máximo 8 equipas.'};const used=new Set(s.teams.map(t=>t.color));const c=COLORS.find(c=>!used.has(c[1]))||COLORS[0];const t={id:'t'+uid(),name:c[0],color:c[1],icon:c[2]};s.teams.push(t);s.cards[t.id]=randomCard(s);return{ok:true};}
 function removeTeam(s,id){if(!editable(s))return{ok:false,msg:'Só antes do jogo.'};if(s.teams.length<=2)return{ok:false,msg:'São precisas pelo menos 2 equipas.'};s.teams=s.teams.filter(t=>t.id!==id);delete s.cards[id];return{ok:true};}
 function setTeam(s,id,patch){const t=s.teams.find(t=>t.id===id);if(!t)return{ok:false};if('name'in patch){const n=String(patch.name).trim().slice(0,24);if(!n)return{ok:false,msg:'O nome não pode ficar vazio.'};if(s.teams.some(x=>x.id!==id&&x.name.toLowerCase()===n.toLowerCase()))return{ok:false,msg:'Já há uma equipa com esse nome.'};t.name=n;}if('color'in patch){t.color=patch.color;const pe=COLORS.find(c=>c[1]===patch.color);if(pe)t.icon=pe[2];}return{ok:true};}
-function setSize(s,k){if(!editable(s))return{ok:false,msg:'Só antes do jogo.'};if(![3,4].includes(k))return{ok:false};if(k*k>s.pool)return{ok:false,msg:'Para cartelas 4×4 são precisos pelo menos 16 números no globo.'};s.size=k;s.gid=uid();generateCards(s);return{ok:true};}
-function setPool(s,n){if(!editable(s))return{ok:false,msg:'Só antes do jogo.'};n=+n;if(!POOLS.includes(n))return{ok:false};if(n<s.size*s.size)return{ok:false,msg:'Com cartelas 4×4 são precisos pelo menos 16 números.'};s.pool=n;s.gid=uid();generateCards(s);return{ok:true};}
+function setPoolT(s,type,n){if(!editable(s))return{ok:false,msg:'Só antes do jogo.'};if(!COMP[type])return{ok:false};n=Math.round(+n);const max=byType(s,type).length;if(!(n>=COMP[type]&&n<=max))return{ok:false,msg:'Entre '+COMP[type]+' e '+max+'.'};s.poolT[type]=n;s.gid=uid();generateCards(s);return{ok:true};}
 function setSecs(s,type,v){if(!TYPES[type])return{ok:false};v=Math.round(+v);if(!(v>=5&&v<=300))return{ok:false,msg:'Tempo entre 5 e 300 segundos.'};s.secs[type]=v;return{ok:true};}
-function migrate(s){(s.challenges||[]).forEach(c=>{if(c.type==='pergunta'&&!Array.isArray(c.options)){const d=CH.find(x=>x[0]==='pergunta'&&x[1]===c.title);c.options=d?d[4].slice():[c.answer||'','',''];c.correct=d?d[5]:0;c.answer=c.options[c.correct];}});s.teams.forEach(t=>{if(!t.icon){const pe=COLORS.find(x=>x[1]===t.color);t.icon=pe?pe[2]:'🎃';}});return s;}
-function isCorrect(s,n,choice){const c=s.challenges.find(c=>c.n===n);return !!c&&c.type==='pergunta'&&c.correct===choice;}
-function setChallenge(s,n,patch){const c=s.challenges.find(c=>c.n===n);if(!c)return{ok:false};if('type'in patch){if(!editable(s))return{ok:false,msg:'O tipo só muda antes do jogo.'};if(!TYPES[patch.type])return{ok:false};c.type=patch.type;if(c.type==='pergunta'&&!Array.isArray(c.options)){c.options=['','',''];c.correct=0;}}
+function migrate(s){(s.challenges||[]).forEach(c=>{if(c.type==='pergunta'&&typeof c.open!=='boolean')c.open=false;if(c.type==='pergunta'&&!Array.isArray(c.options)){const d=CH.find(x=>x[0]==='pergunta'&&x[1]===c.title);c.options=d?d[4].slice():[c.answer||'','',''];c.correct=d?d[5]:0;c.answer=c.options[c.correct];}});s.teams.forEach(t=>{if(!t.icon){const pe=COLORS.find(x=>x[1]===t.color);t.icon=pe?pe[2]:'🎃';}});if(!s.poolT)s.poolT=Object.assign({},DEF_POOL);return s;}
+function isCorrect(s,n,choice){const c=s.challenges.find(c=>c.n===n);return !!c&&c.type==='pergunta'&&!c.open&&c.correct===choice;}
+function setChallenge(s,n,patch){const c=s.challenges.find(c=>c.n===n);if(!c)return{ok:false};if('type'in patch){if(!editable(s))return{ok:false,msg:'O tipo só muda antes do jogo.'};if(!TYPES[patch.type])return{ok:false};const old=c.type;c.type=patch.type;if(!poolOk(s)){c.type=old;return{ok:false,msg:'Têm de existir pelo menos 4 perguntas, 1 mímica e 1 karaoke.'};}
+if(c.type==='pergunta'&&!Array.isArray(c.options)){c.options=['','',''];c.correct=0;}Object.keys(COMP).forEach(t=>{const m=byType(s,t).length;s.poolT[t]=Math.min(Math.max(COMP[t],s.poolT[t]),m);});s.gid=uid();generateCards(s);}
 if('opt'in patch){if(!Array.isArray(c.options))c.options=['','',''];const k=patch.opt[0];if([0,1,2].includes(k))c.options[k]=String(patch.opt[1]).slice(0,120);}
 if('correct'in patch){const k=+patch.correct;if([0,1,2].includes(k))c.correct=k;}
-if(Array.isArray(c.options))c.answer=c.options[c.correct]||'';
+if('open'in patch&&c.type==='pergunta'){c.open=!!patch.open;if(!Array.isArray(c.options)){c.options=['','',''];c.correct=0;}}
+if(Array.isArray(c.options)&&!c.open)c.answer=c.options[c.correct]||'';
 ['title','text','answer'].forEach(k=>{if(k in patch)c[k]=String(patch[k]).slice(0,300);});return{ok:true};}
-function start(s,picks){if(s.phase!=='setup')return{ok:false,msg:'O jogo já começou.'};if(s.teams.length<2)return{ok:false,msg:'São precisas pelo menos 2 equipas.'};
+function start(s,picks){if(s.phase!=='setup')return{ok:false,msg:'O jogo já começou.'};if(s.teams.length<2)return{ok:false,msg:'São precisas pelo menos 2 equipas.'};if(!poolOk(s))return{ok:false,msg:'Faltam desafios de algum tipo.'};
 let used=0;s.teams.forEach(t=>{const p=pickFor(s,picks,t.id);if(p){s.cards[t.id]=p.card.slice().sort((a,b)=>a-b);used++;}else if(!validCard(s,s.cards[t.id]))s.cards[t.id]=randomCard(s);});
-s.phase='playing';s.draws=[];s.spin=null;s.timer=null;s.turn=0;s.tieWinner=null;return{ok:true,used};}
+s.phase='playing';s.draws=[];s.spin=null;s.timer=null;s.tieWinner=null;return{ok:true,used};}
 const inPlay=s=>[...new Set(s.teams.flatMap(t=>s.cards[t.id]||[]))].sort((a,b)=>a-b);
 const holders=(s,n)=>s.teams.filter(t=>(s.cards[t.id]||[]).includes(n));
 const doneBy=(s,tid,n,except)=>s.draws.some((d,i)=>i!==except&&d.n===n&&d.results[tid]==='ok');
 const playersFor=(s,i)=>{const d=s.draws[i];return d?holders(s,d.n).filter(t=>!doneBy(s,t.id,d.n,i)):[];};
 const remaining=s=>inPlay(s).filter(n=>holders(s,n).some(t=>!doneBy(s,t.id,n)));
-const turnTeam=s=>s.teams.length?s.teams[s.turn%s.teams.length]:null;
+const turnTeam=()=>null;
 function spin(s,now,rng){rng=rng||Math.random;if(s.phase!=='playing')return{ok:false,msg:'O jogo não está a decorrer.'};let r=remaining(s);if(!r.length)return{ok:false,msg:'Todas as cartelas estão completas.'};
 const cur=s.spin&&s.spin.n;if(r.length>1&&cur!=null)r=r.filter(n=>n!==cur);
-const n=r[Math.floor(rng()*r.length)];const by=turnTeam(s);s.draws.push({n,at:now,results:{},by:by?by.id:null});s.spin={id:uid(),n,at:now,i:s.draws.length-1};
-s.turn=(s.turn+1)%s.teams.length;s.timer=null;s.showAnswer=false;return{ok:true,n};}
-function undoSpin(s){if(s.phase!=='playing'||!s.draws.length)return{ok:false,msg:'Não há bolas para anular.'};s.draws.pop();s.turn=(s.turn-1+s.teams.length)%s.teams.length;const l=s.draws.length-1;s.spin=l>=0?{id:uid(),n:s.draws[l].n,at:0,i:l}:null;s.timer=null;s.showAnswer=false;return{ok:true};}
+const n=r[Math.floor(rng()*r.length)];s.draws.push({n,at:now,results:{},ord:[]});s.spin={id:uid(),n,at:now,i:s.draws.length-1};s.timer=null;s.showAnswer=false;return{ok:true,n};}
+function undoSpin(s){if(s.phase!=='playing'||!s.draws.length)return{ok:false,msg:'Não há bolas para anular.'};s.draws.pop();const l=s.draws.length-1;s.spin=l>=0?{id:uid(),n:s.draws[l].n,at:0,i:l}:null;s.timer=null;s.showAnswer=false;return{ok:true};}
 function setResult(s,i,tid,val){const d=s.draws[i];if(!d)return{ok:false,msg:'Essa bola não existe.'};if(!playersFor(s,i).some(t=>t.id===tid))return{ok:false,msg:'Essa equipa não joga esta bola.'};
-if(val==='ok'||val==='fail')d.results[tid]=val;else delete d.results[tid];if(s.tieWinner)s.tieWinner=null;if(s.phase==='playing'&&ranking(s).some(r=>r.full)){s.phase='ended';s.timer=null;}return{ok:true};}
+if(!Array.isArray(d.ord))d.ord=[];d.ord=d.ord.filter(x=>x!==tid);
+if(val==='ok'){d.results[tid]='ok';d.ord.push(tid);}else if(val==='fail')d.results[tid]='fail';else delete d.results[tid];
+if(s.tieWinner)s.tieWinner=null;if(s.phase==='playing'&&ranking(s).some(r=>r.full)){s.phase='ended';s.timer=null;}return{ok:true};}
 function timerStart(s,now){if(!s.spin)return{ok:false};const c=s.challenges.find(c=>c.n===s.spin.n);s.timer={startedAt:now,secs:s.secs[c.type]||30};return{ok:true};}
 function timerStop(s){s.timer=null;return{ok:true};}
+function timerAdd(s,now,sec){if(!s.timer)return{ok:false};if(timerLeft(s,now)===0)s.timer={startedAt:now,secs:sec};else s.timer.secs=Math.min(s.timer.secs+sec,900);return{ok:true};}
 const timerLeft=(s,now)=>s.timer?Math.max(0,s.timer.secs*1000-(now-s.timer.startedAt)):null;
-function lines(k){const L=[];for(let r=0;r<k;r++)L.push([...Array(k)].map((_,c)=>r*k+c));for(let c=0;c<k;c++)L.push([...Array(k)].map((_,r)=>r*k+c));L.push([...Array(k)].map((_,i)=>i*k+i));L.push([...Array(k)].map((_,i)=>i*k+(k-1-i)));return L;}
-function status(s,t){const card=s.cards[t.id]||[];const first={};s.draws.forEach((d,i)=>{if(d.results[t.id]==='ok'&&first[d.n]==null)first[d.n]=i;});
-const done=card.map(n=>first[n]!=null);const cells=done.filter(Boolean).length;const ln=lines(s.size).filter(L=>L.every(i=>done[i])).length;const full=card.length>0&&cells===card.length;
-return{tid:t.id,name:t.name,color:t.color,cells,total:card.length,lines:ln,full,fullIdx:full?Math.max(...card.map(n=>first[n])):Infinity};}
-function ranking(s){const r=s.teams.map(t=>status(s,t));const cmp=(a,b)=>(a.fullIdx-b.fullIdx)||(b.cells-a.cells)||(b.lines-a.lines);
-r.sort((a,b)=>cmp(a,b)||a.name.localeCompare(b.name,'pt'));r.forEach((x,i)=>{x.rank=(i&&cmp(r[i-1],x)===0)?r[i-1].rank:i+1;});return r;}
+function lines(){const L=[];for(let r=0;r<CARD_N/COLS;r++)L.push([...Array(COLS)].map((_,c)=>r*COLS+c));return L;}
+function status(s,t){const card=s.cards[t.id]||[];const key={};s.draws.forEach((d,i)=>{if(d.results[t.id]==='ok'&&key[d.n]==null){const pos=Array.isArray(d.ord)&&d.ord.indexOf(t.id)>=0?d.ord.indexOf(t.id):999;key[d.n]=i*1000+pos;}});
+const done=card.map(n=>key[n]!=null);const cells=done.filter(Boolean).length;const ln=lines().filter(L=>L.every(i=>done[i])).length;const full=card.length>0&&cells===card.length;const keys=card.filter(n=>key[n]!=null).map(n=>key[n]);const last=keys.length?Math.max(...keys):Infinity;
+return{tid:t.id,name:t.name,color:t.color,cells,total:card.length,lines:ln,full,fullKey:full?last:Infinity,lastKey:last};}
+const cmpN=(a,b)=>a===b?0:(a<b?-1:1);
+function cmpR(a,b){return cmpN(a.fullKey,b.fullKey)||(b.cells-a.cells)||cmpN(a.lastKey,b.lastKey);}
+function ranking(s){const r=s.teams.map(t=>status(s,t));r.sort((a,b)=>cmpR(a,b)||a.name.localeCompare(b.name,'pt'));r.forEach((x,i)=>{x.rank=(i&&cmpR(r[i-1],x)===0)?r[i-1].rank:i+1;});return r;}
 const fullTeams=s=>ranking(s).filter(r=>r.full);
 function tied(s){const r=ranking(s).filter(x=>x.rank===1);return r.length>1&&r[0].cells>0?r:[];}
 function winner(s){if(s.phase!=='ended')return null;const r=ranking(s);if(!r.length||!r[0].cells)return null;const t=r.filter(x=>x.rank===1);return t.length===1?t[0]:(t.find(x=>x.tid===s.tieWinner)||null);}
 function end(s){if(s.phase!=='playing')return{ok:false};s.phase='ended';s.timer=null;return{ok:true};}
 function reopen(s){if(s.phase!=='ended')return{ok:false};s.phase='playing';s.tieWinner=null;return{ok:true};}
 function setTieWinner(s,tid){if(!tied(s).some(x=>x.tid===tid))return{ok:false,msg:'Essa equipa não está empatada.'};s.tieWinner=tid;return{ok:true};}
-function newGame(s){s.phase='setup';s.draws=[];s.spin=null;s.timer=null;s.showAnswer=false;s.tieWinner=null;s.turn=0;s.gid=uid();generateCards(s);return{ok:true};}
-function csv(s){const q=x=>'"'+String(x).replace(/"/g,'""')+'"';return '﻿'+[['Posição','Equipa','Casas preenchidas','Total de casas','Linhas','Cartela cheia'].map(q).join(';')].concat(ranking(s).map(r=>[r.rank,r.name,r.cells,r.total,r.lines,r.full?'Sim':'Não'].map(q).join(';'))).join('\r\n');}
-return{TYPES,COLORS,POOLS,migrate,isCorrect,fresh,uid,poolNums,generateCards,randomCard,validCard,pickFor,cardOf,addTeam,removeTeam,setTeam,setSize,setPool,setSecs,setChallenge,start,inPlay,holders,doneBy,playersFor,remaining,turnTeam,spin,undoSpin,setResult,timerStart,timerStop,timerLeft,lines,status,ranking,fullTeams,tied,winner,end,reopen,setTieWinner,newGame,csv};
+function newGame(s){s.phase='setup';s.draws=[];s.spin=null;s.timer=null;s.showAnswer=false;s.tieWinner=null;s.gid=uid();generateCards(s);return{ok:true};}
+function csv(s){const q=x=>'"'+String(x).replace(/"/g,'""')+'"';return '﻿'+[['Posição','Equipa','Casas preenchidas','Total de casas','Cartela cheia'].map(q).join(';')].concat(ranking(s).map(r=>[r.rank,r.name,r.cells,r.total,r.full?'Sim':'Não'].map(q).join(';'))).join('\r\n');}
+return{timerAdd,TYPES,COLORS,COMP,CARD_N,COLS,DEF_POOL,migrate,isCorrect,fresh,uid,byType,poolByType,poolNums,typeOfN,generateCards,randomCard,validCard,pickFor,cardOf,addTeam,removeTeam,setTeam,setPoolT,setSecs,setChallenge,start,inPlay,holders,doneBy,playersFor,remaining,turnTeam,spin,undoSpin,setResult,timerStart,timerStop,timerLeft,lines,status,ranking,fullTeams,tied,winner,end,reopen,setTieWinner,newGame,csv};
 })();
 /*CORE-END*/
 </script>
@@ -590,10 +597,10 @@ return{TYPES,COLORS,POOLS,migrate,isCorrect,fresh,uid,poolNums,generateCards,ran
 const C=Core,$=s=>document.querySelector(s);
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const SPIN_MS=4200;
-const KEY='bingo-nos-halloween-v5',PKEY='bingo-nos-picks-v5';
+const KEY='bingo-nos-halloween-v7',PKEY='bingo-nos-picks-v5';
 const BASE_URL='https://claude.ai/artifact/8fLG9EvydFAcW3wQdwiqM7';
 /* ---------- estado + sincronização ---------- */
-function parse(j){try{const o=typeof j==='string'?JSON.parse(j):j;if(o&&o.v===5&&Array.isArray(o.teams))return C.migrate(Object.assign(C.fresh(),o));}catch(e){}return null;}
+function parse(j){try{const o=typeof j==='string'?JSON.parse(j):j;if(o&&o.v===7&&Array.isArray(o.teams))return C.migrate(Object.assign(C.fresh(),o));}catch(e){}return null;}
 function lsGet(k){try{return localStorage.getItem(k);}catch(e){return null;}}
 function lsSet(k,v){try{localStorage.setItem(k,v);}catch(e){}}
 let S=parse(lsGet(KEY));if(!S){S=C.fresh();S.rev=1;if(!/^#(e-|tv|jogar)/.test(location.hash))lsSet(KEY,JSON.stringify(S));}
@@ -601,9 +608,11 @@ let PICKS=(()=>{try{return JSON.parse(lsGet(PKEY)||'{}')||{};}catch(e){return{};
 const SB=(window.BINGO_SUPABASE&&/^https:\/\//.test(window.BINGO_SUPABASE.url||'')&&(window.BINGO_SUPABASE.anonKey||'').length>20&&window.supabase)?window.BINGO_SUPABASE:null;
 let db=null,ref=null,online=false,isOwner=!SB,writing=false,dirty=false;
 const bc='BroadcastChannel'in window?new BroadcastChannel('bingo-nos-v5'):null;
-async function push(){lsSet(KEY,JSON.stringify(S));if(bc)bc.postMessage('s');if(!ref)return;if(writing){dirty=true;return;}writing=true;
+async function push(){lsSet(KEY,JSON.stringify(S));if(bc)bc.postMessage('s');if(!ref)return;if(writing){dirty=true;return;}writing=true;pushFinalAgain();
 do{dirty=false;try{await ref.set({rev:S.rev,json:JSON.stringify(S)});}catch(e){if(e&&e.code==='invalid_argument'){isOwner=false;toast('Sem permissão para alterar o jogo.','er');render();break;}if(e&&e.code==='unavailable'){await new Promise(r=>setTimeout(r,600+Math.random()*600));dirty=true;}else{toast('Não foi possível sincronizar ('+(e&&e.code||'erro')+').','er');break;}}}while(dirty);writing=false;}
-function adopt(next){if(!next||(isOwner?next.rev<=S.rev:next.rev===S.rev))return;const prev=S;S=next;lsSet(KEY,JSON.stringify(S));react(prev,S);render();autoValidate();}
+let endedSent=0;function pushFinalAgain(){if(!isOwner||S.phase!=='ended'||endedSent===S.rev)return;endedSent=S.rev;[1500,4000].forEach(t=>setTimeout(()=>{if(isOwner&&S.phase==='ended')push();},t));}
+let gotRemote=false;
+function adopt(next){if(!next)return;if(isOwner||gotRemote){if(next.rev<=S.rev)return;}else if(next.rev===S.rev&&JSON.stringify(next)===JSON.stringify(S)){gotRemote=true;return;}gotRemote=true;const prev=S;S=next;lsSet(KEY,JSON.stringify(S));react(prev,S);render();autoValidate();}
 function setPicks(p){const prev=PICKS;PICKS=p;if(JSON.stringify(prev)!==JSON.stringify(p)){render();autoValidate();}}
 if(bc)bc.onmessage=e=>{if(ref)return;if(e.data==='p'){try{setPicks(JSON.parse(lsGet(PKEY)||'{}'));}catch(x){}}else adopt(parse(lsGet(KEY)));};
 addEventListener('storage',e=>{if(ref)return;if(e.key===KEY)adopt(parse(e.newValue));if(e.key===PKEY){try{setPicks(JSON.parse(e.newValue||'{}'));}catch(x){}}});
@@ -621,7 +630,7 @@ return{
 async set(body){let r;if(col==='game')r=await sb.from('bingo_game').upsert({id,rev:body.rev,state:body.json,updated_at:new Date().toISOString()});else r=await sb.from('bingo_picks').upsert({key:id,body,updated_at:new Date().toISOString()});if(r.error)throw mapErr(r.error);},
 onSnapshot(next,onErr){let alive=true;const load=async()=>{if(!alive)return;const{data,error}=await sb.from('bingo_game').select('rev,state').eq('id',id).maybeSingle();if(error){online=false;render();return;}if(!online){online=true;render();}next({exists:!!data,data:()=>data?{rev:data.rev,json:data.state}:undefined});};
 load();const ch=sb.channel('jogo-'+id).on('postgres_changes',{event:'*',schema:'public',table:'bingo_game',filter:'id=eq.'+id},p=>{const r=p.new;if(r&&r.state)next({exists:true,data:()=>({rev:r.rev,json:r.state})});}).subscribe(st=>{if(st==='SUBSCRIBED')load();});chans.push(ch);
-const iv=setInterval(load,5000);return()=>{alive=false;clearInterval(iv);sb.removeChannel(ch);};}};},
+const iv=setInterval(load,2500);return()=>{alive=false;clearInterval(iv);sb.removeChannel(ch);};}};},
 collection(){return{onSnapshot(next){let alive=true;const load=async()=>{if(!alive)return;const{data,error}=await sb.from('bingo_picks').select('key,body');if(error)return;next({docs:(data||[]).map(r=>({id:r.key,data:()=>r.body}))});};
 load();const ch=sb.channel('escolhas').on('postgres_changes',{event:'*',schema:'public',table:'bingo_picks'},()=>load()).subscribe(st=>{if(st==='SUBSCRIBED')load();});chans.push(ch);
 const iv=setInterval(load,4000);return()=>{alive=false;clearInterval(iv);sb.removeChannel(ch);};}};}};}
@@ -631,7 +640,7 @@ const pwHash=(str,seed=7)=>{let h1=0xdeadbeef^seed,h2=0x41c6ce57^seed;for(let i=
 async function connectSupa(){try{sbClient=window.supabase.createClient(SB.url,SB.anonKey,{auth:{persistSession:false,autoRefreshToken:false}});
 isOwner=lsGet('bingo-mod')===MOD_HASH;
 db=supaAdapter(sbClient);ref=db.doc('game/main');
-ref.onSnapshot(snap=>{if(!snap.exists){remoteExists=false;if(isOwner){if(!S.rev)S.rev=1;push();}return;}remoteExists=true;const next=parse(snap.data().json);if(next)adopt(next);});
+ref.onSnapshot(snap=>{if(!snap.exists){remoteExists=false;if(isOwner){if(!S.rev)S.rev=1;push();}return;}remoteExists=true;const next=parse(snap.data().json);if(next)adopt(next);else if(isOwner){S.rev=Math.max(S.rev,(snap.data().rev||0))+1;push();}});
 db.collection('picks').onSnapshot(q=>{const p={};q.docs.forEach(d=>{const x=d.data();if(x)p[d.id]=x;});setPicks(p);});
 render();}catch(e){console.warn(e);toast('Não foi possível ligar ao Supabase. Confirma o endereço e a chave.','er');}}
 function doLogin(){const pw=($('#lg_pass')||{}).value||'';if(!pw)return toast('Escreve a palavra-passe.','er');if(pwHash(pw)!==MOD_HASH)return toast('Palavra-passe errada.','er');
@@ -640,18 +649,19 @@ function loginView(){return '<div class="wrap joinw"><div class="center splash">
 (async function connect(){try{if(SB){connectSupa();return;}if(!window.claude||!window.claude.use)return;const[d,u]=await Promise.all([window.claude.use('db'),window.claude.use('user')]);
 if(u){try{isOwner=await u.isOwner();}catch(e){}}
 if(!d){render();return;}db=d;ref=db.doc('game/state');online=true;
-ref.onSnapshot(snap=>{if(!snap.exists){if(isOwner){if(!S.rev)S.rev=1;push();}return;}const next=parse(snap.data().json);if(next)adopt(next);},()=>{online=false;ref=null;render();});
+ref.onSnapshot(snap=>{if(!snap.exists){if(isOwner){if(!S.rev)S.rev=1;push();}return;}const next=parse(snap.data().json);if(next)adopt(next);else if(isOwner){S.rev=Math.max(S.rev,(snap.data().rev||0))+1;push();}},()=>{online=false;ref=null;render();});
 db.collection('picks').onSnapshot(q=>{const p={};q.docs.forEach(d=>{const x=d.data();if(x)p[d.id]=x;});setPicks(p);},()=>{});
 render();}catch(e){console.warn(e);}})();
 /* ---------- perguntas: respostas e validação automática ---------- */
 function myAns(tid){const a=PICKS['a-'+tid];return a&&S.spin&&a.sid===S.spin.id&&[0,1,2].includes(a.choice)?a:null;}
-function qRevealed(){if(!S.spin)return false;const c=S.challenges.find(x=>x.n===S.spin.n);if(!c||c.type!=='pergunta')return false;if(S.showAnswer)return true;const d=S.draws[S.spin.i],pl=C.playersFor(S,S.spin.i);if(pl.length&&pl.every(t=>d.results[t.id]||myAns(t.id)))return true;return !!(S.timer&&C.timerLeft(S,Date.now())===0);}
-function canAnswer(tid){if(S.phase!=='playing'||!S.spin||spinning(Date.now()))return false;const c=S.challenges.find(x=>x.n===S.spin.n);if(!c||c.type!=='pergunta')return false;const d=S.draws[S.spin.i];if(!C.playersFor(S,S.spin.i).some(t=>t.id===tid))return false;if(d.results[tid]||myAns(tid))return false;return !(S.timer&&C.timerLeft(S,Date.now())===0);}
-function autoValidate(){if(route()!=='mod'||!isOwner||S.phase!=='playing'||!S.spin||spinning(Date.now()))return;const c=S.challenges.find(x=>x.n===S.spin.n);if(!c||c.type!=='pergunta')return;
-const i=S.spin.i,d=S.draws[i],pl=C.playersFor(S,i),todo=[];pl.forEach(t=>{if(d.results[t.id])return;const a=myAns(t.id);if(a)todo.push([t.id,a.choice===c.correct?'ok':'fail']);});
+function qRevealed(){if(!S.spin)return false;const c=S.challenges.find(x=>x.n===S.spin.n);if(!c||c.type!=='pergunta')return false;if(S.showAnswer)return true;if(c.open)return false;const d=S.draws[S.spin.i],pl=C.playersFor(S,S.spin.i);if(pl.length&&pl.every(t=>d.results[t.id]||myAns(t.id)))return true;return !!(S.timer&&C.timerLeft(S,Date.now())===0);}
+function canAnswer(tid){if(S.phase!=='playing'||!S.spin||spinning(Date.now()))return false;const c=S.challenges.find(x=>x.n===S.spin.n);if(!c||c.type!=='pergunta'||c.open)return false;const d=S.draws[S.spin.i];if(!C.playersFor(S,S.spin.i).some(t=>t.id===tid))return false;if(d.results[tid]||myAns(tid))return false;return !(S.timer&&C.timerLeft(S,Date.now())===0);}
+function autoValidate(){if(route()!=='mod'||!isOwner||S.phase!=='playing'||!S.spin||spinning(Date.now()))return;const c=S.challenges.find(x=>x.n===S.spin.n);if(!c||c.type!=='pergunta'||c.open)return;
+const i=S.spin.i,d=S.draws[i],pl=C.playersFor(S,i),todo=[];pl.map(t=>[t,myAns(t.id)]).filter(x=>x[1]&&!d.results[x[0].id]).sort((x,y)=>(x[1].at||0)-(y[1].at||0)).forEach(([t,a])=>todo.push([t.id,a.choice===c.correct?'ok':'fail']));
 if(S.timer&&C.timerLeft(S,Date.now())===0)pl.forEach(t=>{if(!d.results[t.id]&&!todo.some(x=>x[0]===t.id))todo.push([t.id,'fail']);});
 if(todo.length)act(s=>{todo.forEach(([tid,v])=>C.setResult(s,i,tid,v));return{ok:true};});}
-function qOptions(c,mode,tid){if(!Array.isArray(c.options))return '';const i=S.spin.i,pl=C.playersFor(S,i),rev=qRevealed(),L='ABC';const mineA=tid?myAns(tid):null;const tap=mode==='team'&&canAnswer(tid);
+function qOpen(c,mode){return '<div class="qopen"><b>💬 Pergunta aberta</b><span>'+(mode==='mod'?'A equipa responde em voz alta. Marca ✔ ou ✖.':'Respondam em voz alta: o moderador decide se está certo.')+'</span>'+(S.showAnswer&&c.answer?'<div class="qans">Resposta: <b>'+esc(c.answer)+'</b></div>':'')+'</div>';}
+function qOptions(c,mode,tid){if(c.open)return qOpen(c,mode);if(!Array.isArray(c.options))return '';const i=S.spin.i,pl=C.playersFor(S,i),rev=qRevealed(),L='ABC';const mineA=tid?myAns(tid):null;const tap=mode==='team'&&canAnswer(tid);
 return '<div class="qopts'+(tap?' tap':'')+'">'+c.options.map((o,k)=>{const who=(rev||mode==='mod')?pl.filter(t=>{const a=myAns(t.id);return a&&a.choice===k;}):[];const mine=mineA&&mineA.choice===k;const showRight=rev||(mode==='mod'&&ui.showPriv);
 const cls=(showRight&&k===c.correct?' right':'')+(rev&&k!==c.correct&&(mine||who.length)?' wrong':'')+(mine?' mine':'');
 const inner='<span class="ql">'+L[k]+'</span><span class="qt">'+esc(o)+'</span>'+(who.length?'<span class="qwho">'+who.map(t=>teamIcon(t)).join('')+'</span>':'')+(mine&&!rev?'<span class="qsent">enviada</span>':'');
@@ -807,11 +817,11 @@ function railHTML(){if(!S.draws.length)return '';const ds=S.draws.slice(-7).reve
 /* cartela */
 function cardHTML(t,opts){opts=opts||{};const card=opts.card||S.cards[t.id]||[];const cur=opts.cur;const st=S.phase==='setup'?null:C.status(S,t);
 const playing=cur!=null&&card.includes(cur)&&!C.doneBy(S,t.id,cur);
-let h='<div class="bcard'+(playing?' play':'')+'" style="--tc:'+t.color+';--tt:'+ink(t.color)+'"><div class="bhead"><b>'+esc(t.name)+'</b>'+(st&&st.full?'<span class="ln">BINGO</span>':st&&st.lines?'<span class="ln">'+st.lines+' LINHA'+(st.lines>1?'S':'')+'</span>':'')+(opts.badge||'')+(st?'<span class="sc">'+st.cells+'/'+st.total+'</span>':'')+'</div><div class="bgrid" style="grid-template-columns:repeat('+S.size+',1fr)">';
+let h='<div class="bcard'+(playing?' play':'')+'" style="--tc:'+t.color+';--tt:'+ink(t.color)+'"><div class="bhead"><b>'+esc(t.name)+'</b>'+(st&&st.full?'<span class="ln">BINGO</span>':st&&st.lines?'<span class="ln">'+st.lines+' LINHA'+(st.lines>1?'S':'')+'</span>':'')+(opts.badge||'')+(st?'<span class="sc">'+st.cells+'/'+st.total+'</span>':'')+'</div><div class="bgrid" style="grid-template-columns:repeat('+C.COLS+',1fr)">';
 card.forEach(n=>{const c=S.challenges.find(x=>x.n===n);const ok=S.phase!=='setup'&&C.doneBy(S,t.id,n);h+='<div class="bc'+(ok?' ok':'')+(cur===n&&!ok?' cur':'')+'" title="'+esc(c?c.title:'')+'" style="--ty:'+(c?tdef(c).color:'#888')+'"><span class="n">'+n+'</span><span class="ic">'+(c?tdef(c).icon:'')+'</span></div>';});
 return h+'</div></div>';}
 function scoreHTML(){return rankRows();}
-function currentHTML(mod){const now=Date.now(),nt=C.turnTeam(S);const turn=nt?'<p class="turn" style="--tc:'+nt.color+'">'+(S.spin?'Próxima a rodar':'Vez de rodar')+': <b>'+esc(nt.name)+'</b></p>':'';
+function currentHTML(mod){const now=Date.now(),nt=null;const turn=nt?'<p class="turn" style="--tc:'+nt.color+'">'+(S.spin?'Próxima a rodar':'Vez de rodar')+': <b>'+esc(nt.name)+'</b></p>':'';
 if(!S.spin)return '<div class="reveal">'+turn+'<p class="waiting">'+(mod?'Carrega no botão para rodar o globo.':'À espera da primeira bola…')+'</p></div>';
 if(spinning(now))return '<div class="reveal"><p class="spinning">A RODAR…</p></div>';
 const c=S.challenges.find(x=>x.n===S.spin.n),ty=tdef(c),i=S.spin.i,d=S.draws[i],pl=C.playersFor(S,i),left=C.timerLeft(S,now);
@@ -829,25 +839,25 @@ function qrSVG(text){try{if(typeof qrcode!=='function')return '';const q=qrcode(
 function linksHTML(){const jl=baseLink()+'#jogar',jq=qrSVG(jl);return '<div class="links"><div class="lrow main" style="--tc:#b5ff2a">'+(jq?'<div class="qr">'+jq+'</div>':'<div></div>')+'<div style="min-width:0"><b>QR para todas as equipas</b><p class="note">Cada capitão lê, entra e escolhe a sua equipa.</p><code id="lk_all">'+esc(jl)+'</code></div></div>'+S.teams.map(t=>{const l=teamLink(t),q=qrSVG(l),ps=pickState(t.id);return '<div class="lrow" style="--tc:'+t.color+'">'+(q?'<div class="qr" aria-label="QR code da equipa '+esc(t.name)+'">'+q+'</div>':'<div></div>')+'<div style="min-width:0"><b>'+esc(t.name)+'</b> <span class="pst '+ps+'">'+PICK_LABEL[ps]+'</span><code id="lk_'+t.id+'">'+esc(l)+'</code><button data-a="copy" data-id="'+t.id+'">Copiar link</button></div></div>';}).join('')+'</div>';}
 function selectCode(id){const el=document.getElementById('lk_'+id);if(!el)return;const r=document.createRange();r.selectNodeContents(el);const sel=getSelection();sel.removeAllRanges();sel.addRange(r);toast('Link selecionado: copia-o manualmente.','ok');}
 /* ---------- 1. PREPARAR ---------- */
-function setupView(){const pal=C.COLORS,k=S.size*S.size;const locked=S.teams.filter(t=>pickState(t.id)==='locked').length;
+function setupView(){const pal=C.COLORS;const inPool=new Set(C.poolNums(S));const locked=S.teams.filter(t=>pickState(t.id)==='locked').length;
 let h='<div class="wrap"><div class="head">'+logo('lg')+'<div class="sp"></div>'+syncPill()+'<button class="ghost" data-a="tv">📺 Abrir visão TV</button>'+(SB?'<button class="ghost" data-a="logout" title="Sair do modo moderador">Sair</button>':'')+'</div><div class="steps">';
 h+='<div class="card step"><h2><span class="num">1</span>Equipas <span class="mu" style="font-weight:600">('+S.teams.length+')</span></h2>'+S.teams.map(t=>'<div class="teamrow"><button class="swatch" style="background:'+t.color+'" data-a="pal" data-id="'+t.id+'" aria-label="Mudar cor"></button><input id="tn_'+t.id+'" data-tn="'+t.id+'" value="'+esc(t.name)+'" maxlength="24" aria-label="Nome da equipa"><button class="ghost" data-a="rmTeam" data-id="'+t.id+'" aria-label="Retirar equipa" '+(S.teams.length<=2?'disabled':'')+'>✕</button></div>'+(ui.pal===t.id?'<div class="palette">'+pal.map(p=>'<button style="background:'+p[1]+'" class="'+(t.color===p[1]?'sel':'')+'" data-a="setColor" data-id="'+t.id+'" data-c="'+p[1]+'" aria-label="'+p[0]+'"></button>').join('')+'</div>':'')).join('')+'<button data-a="addTeam" '+(S.teams.length>=8?'disabled':'')+'>+ Adicionar equipa</button></div>';
-h+='<div class="card step"><h2><span class="num">2</span>Regras</h2><div class="rules"><div><label class="mu" for="pool">Números no globo</label><select id="pool" data-pool>'+C.POOLS.filter(n=>n>=k).map(n=>'<option value="'+n+'"'+(S.pool===n?' selected':'')+'>'+n+' números'+(n===15?' (recomendado)':'')+'</option>').join('')+'</select></div><div><span class="mu">Cartela</span><div class="seg"><button class="'+(S.size===3?'on':'')+'" data-a="size" data-k="3">3×3</button><button class="'+(S.size===4?'on':'')+'" data-a="size" data-k="4" '+(S.pool<16?'disabled':'')+'>4×4</button></div></div>'+Object.entries(C.TYPES).map(([key,t])=>'<div><label class="mu" for="secs_'+key+'">'+t.icon+' Tempo '+t.label.toLowerCase()+' (s)</label><input id="secs_'+key+'" type="number" min="5" max="300" data-secs="'+key+'" value="'+S.secs[key]+'"></div>').join('')+'</div>';
-h+='<p class="note" style="margin-top:12px">Toca a sirene e sai um número. As equipas que o têm na cartela fazem o desafio dentro do tempo. Se cumprirem, a casa fica pintada. Se alguma equipa falhar, a bola volta ao globo e pode sair outra vez. <b>Ganha a primeira equipa a encher a cartela.</b> Se terminares antes, ganha quem tiver mais casas preenchidas.</p></div>';
+h+='<div class="card step"><h2><span class="num">2</span>Regras</h2><div class="comp"><b>Cada cartela tem 6 casas:</b> <span class="typ" style="--tyc:'+C.TYPES.pergunta.color+';margin:0">❓ 4 perguntas</span> <span class="typ" style="--tyc:'+C.TYPES.mimica.color+';margin:0">🎭 1 mímica</span> <span class="typ" style="--tyc:'+C.TYPES.karaoke.color+';margin:0">🎤 1 karaoke</span></div><div class="rules">'+Object.entries(C.TYPES).map(([key,t])=>{const max=C.byType(S,key).length,min=C.COMP[key];return '<div><label class="mu" for="pool_'+key+'">'+t.icon+' Bolas de '+t.label.toLowerCase()+' no globo</label><select id="pool_'+key+'" data-poolt="'+key+'">'+Array.from({length:max-min+1},(_,x)=>min+x).map(v=>'<option value="'+v+'"'+(S.poolT[key]===v?' selected':'')+'>'+v+'</option>').join('')+'</select></div>';}).join('')+Object.entries(C.TYPES).map(([key,t])=>'<div><label class="mu" for="secs_'+key+'">'+t.icon+' Tempo '+t.label.toLowerCase()+' (s)</label><input id="secs_'+key+'" type="number" min="5" max="300" data-secs="'+key+'" value="'+S.secs[key]+'"></div>').join('')+'</div>';
+h+='<p class="note" style="margin-top:12px">Toca a sirene e sai um número. As equipas que o têm na cartela fazem o desafio dentro do tempo. Se cumprirem, a casa fica pintada. Se alguma equipa falhar, a bola volta ao globo e pode sair outra vez. <b>Ganha a primeira equipa a encher a cartela.</b> Se duas equipas fecharem na mesma bola, ganha a que respondeu ou cumpriu primeiro. Se terminares antes, ganha quem tiver mais casas (em caso de igualdade, quem lá chegou primeiro).</p></div>';
 h+='<div class="card step"><h2><span class="num">3</span>Cartelas <span class="mu" style="font-weight:600">('+locked+' de '+S.teams.length+' escolhidas)</span></h2><p class="note" style="margin-bottom:12px">Mostra o <b>QR geral</b>: cada capitão entra, escolhe a equipa, troca de cartela até gostar e carrega em «Queremos esta». '+(SB?'Os telemóveis <b>não precisam de conta</b>: basta lerem o QR code.':inArtifact()?'Partilha antes o jogo com o capitão de cada equipa (botão Partilhar, com acesso de <b>colaborador</b> ou <b>editor</b>), senão não conseguem escolher.':'Nesta cópia local os links só funcionam neste computador.')+' Quando carregares em Começar, as cartelas ficam bloqueadas.</p>'+linksHTML()+'<div class="cards" style="margin-top:14px">'+S.teams.map(t=>{const ps=pickState(t.id);return cardHTML(t,{card:cardFor(t.id),badge:'<span class="pst '+ps+'">'+(ps==='locked'?'✔':ps==='picking'?'…':'')+'</span>'});}).join('')+'</div><div class="row" style="margin-top:10px"><button data-a="shuffle">🔀 Baralhar cartelas</button><span class="note">Só muda as equipas que ainda não escolheram.</span></div></div>';
-h+='<div class="card step"><h2><span class="num">4</span>Desafios no globo</h2><div class="row" style="gap:8px">'+Object.values(C.TYPES).map(t=>'<span class="typ" style="--tyc:'+t.color+';margin:0">'+t.icon+' '+t.label+'</span>').join('')+'</div><details><summary>Ver e editar os desafios ›</summary><div class="chl">'+S.challenges.map(c=>'<div class="chi'+(c.n>S.pool?' out':'')+'"><span class="n">'+c.n+'</span><select data-ct="'+c.n+'" aria-label="Tipo">'+Object.entries(C.TYPES).map(([key,t])=>'<option value="'+key+'"'+(c.type===key?' selected':'')+'>'+t.icon+' '+t.label+'</option>').join('')+'</select><div class="txt">'+(c.n>S.pool?'<small class="mu">Fora do globo (só entra com mais números)</small>':'')+'<input id="cti_'+c.n+'" data-cf="title" data-n="'+c.n+'" value="'+esc(c.title)+'" aria-label="Título"><textarea id="ctx_'+c.n+'" data-cf="text" data-n="'+c.n+'" aria-label="Desafio">'+esc(c.text)+'</textarea>'+(c.type==='pergunta'?'<div class="optedit">'+[0,1,2].map(k=>'<label class="oe'+((c.correct||0)===k?' ok':'')+'"><input type="radio" name="cor_'+c.n+'" data-corr="'+c.n+'" value="'+k+'"'+((c.correct||0)===k?' checked':'')+' aria-label="Resposta certa '+'ABC'[k]+'"><b>'+'ABC'[k]+'</b><input id="op_'+c.n+'_'+k+'" data-opt="'+k+'" data-n="'+c.n+'" value="'+esc((c.options||[])[k]||'')+'" aria-label="Opção '+'ABC'[k]+'"></label>').join('')+'<small class="mu">Marca a bolinha da resposta certa.</small></div>':'')+'</div></div>').join('')+'</div></details>';
+h+='<div class="card step"><h2><span class="num">4</span>Desafios no globo</h2><div class="row" style="gap:8px">'+Object.values(C.TYPES).map(t=>'<span class="typ" style="--tyc:'+t.color+';margin:0">'+t.icon+' '+t.label+'</span>').join('')+'</div><details><summary>Ver e editar os desafios ›</summary><div class="chl">'+S.challenges.map(c=>'<div class="chi'+(!inPool.has(c.n)?' out':'')+'"><span class="n">'+c.n+'</span><select data-ct="'+c.n+'" aria-label="Tipo">'+Object.entries(C.TYPES).map(([key,t])=>'<option value="'+key+'"'+(c.type===key?' selected':'')+'>'+t.icon+' '+t.label+'</option>').join('')+'</select><div class="txt">'+(!inPool.has(c.n)?'<small class="mu">Fora do globo (só entra com mais números)</small>':'')+'<input id="cti_'+c.n+'" data-cf="title" data-n="'+c.n+'" value="'+esc(c.title)+'" aria-label="Título"><textarea id="ctx_'+c.n+'" data-cf="text" data-n="'+c.n+'" aria-label="Desafio">'+esc(c.text)+'</textarea>'+(c.type==='pergunta'?'<select data-qopen="'+c.n+'" aria-label="Tipo de pergunta"><option value="0"'+(c.open?'':' selected')+'>🔒 Fechada · 3 opções no telemóvel</option><option value="1"'+(c.open?' selected':'')+'>💬 Aberta · respondem em voz alta</option></select>':'')+(c.type==='pergunta'&&c.open?'<input id="ans_'+c.n+'" data-cf="answer" data-n="'+c.n+'" value="'+esc(c.answer||'')+'" placeholder="Resposta certa (só tu vês)" aria-label="Resposta certa">':'')+(c.type==='pergunta'&&!c.open?'<div class="optedit">'+[0,1,2].map(k=>'<label class="oe'+((c.correct||0)===k?' ok':'')+'"><input type="radio" name="cor_'+c.n+'" data-corr="'+c.n+'" value="'+k+'"'+((c.correct||0)===k?' checked':'')+' aria-label="Resposta certa '+'ABC'[k]+'"><b>'+'ABC'[k]+'</b><input id="op_'+c.n+'_'+k+'" data-opt="'+k+'" data-n="'+c.n+'" value="'+esc((c.options||[])[k]||'')+'" aria-label="Opção '+'ABC'[k]+'"></label>').join('')+'<small class="mu">Marca a bolinha da resposta certa.</small></div>':'')+'</div></div>').join('')+'</div></details>';
 h+='<details style="margin-top:4px"><summary>Logótipo e nome do evento ›</summary><div style="display:grid;gap:10px;margin-top:8px"><input id="ev" data-cfg="eventName" value="'+esc(S.eventName)+'" aria-label="Nome do evento"><div class="row"><input type="file" id="logo" accept="image/*" style="max-width:320px">'+(S.logo?'<button class="ghost" data-a="rmLogo">Remover logótipo</button>':'')+'</div></div></details></div>';
 h+='<div class="card" style="text-align:center"><button class="or big" data-a="startAsk" style="width:min(420px,100%)">Começar o jogo ▶</button><p class="note" style="margin-top:10px">'+(locked<S.teams.length?(S.teams.length-locked)+' equipa(s) ainda não confirmaram a cartela.':'Todas as equipas escolheram a cartela.')+'</p></div></div></div>';
 return h;}
 /* ---------- 2. JOGO ---------- */
-function playView(){const now=Date.now(),sp=spinning(now);const c=S.spin&&S.challenges.find(x=>x.n===S.spin.n);const nt=C.turnTeam(S);const fulls=C.fullTeams(S);
+function playView(){const now=Date.now(),sp=spinning(now);const c=S.spin&&S.challenges.find(x=>x.n===S.spin.n);const nt=null;const fulls=C.fullTeams(S);
 let h='<div class="wrap"><div class="head">'+logo()+'<div class="sp"></div>'+syncPill()+'<button class="ghost" data-a="links">📱 Links</button><button class="ghost" data-a="snd">'+(sound?'🔊 Som':'🔈 Som')+'</button><button class="ghost" data-a="tv">📺 Visão TV</button></div>'+stageHTML(true)+'</div>';
 h+='<div class="dock"><div class="dockin">';
 if(fulls.length)h+='<button class="or big" data-a="endAsk">🏆 Terminar: '+esc(fulls.map(f=>f.name).join(' e '))+' fez BINGO</button>';
-h+='<button class="'+(fulls.length?'':'or ')+'big spinbtn" style="--tc:'+(nt?nt.color:'#ff7a1a')+';--tt:'+ink(nt?nt.color:'#ff7a1a')+'" data-a="spin" '+(sp||!C.remaining(S).length?'disabled':'')+'>🚨 '+(nt?esc(nt.name)+' roda':'Rodar')+'</button>';
-if(c&&!sp){const i=S.spin.i,d=S.draws[i];C.playersFor(S,i).forEach(t=>{const r=d.results[t.id];const qa=c.type==='pergunta'?myAns(t.id):null;h+='<div class="res" style="--tc:'+t.color+'"><b>'+esc(t.name)+'</b>'+(c.type==='pergunta'?'<span class="qa">'+(qa?'respondeu '+'ABC'[qa.choice]:'à espera…')+'</span>':'')+'<button class="y'+(r==='ok'?' on':'')+'" data-a="res" data-t="'+t.id+'" data-v="ok">✔ Cumpriu</button><button class="n'+(r==='fail'?' on':'')+'" data-a="res" data-t="'+t.id+'" data-v="fail">✖ Falhou</button></div>';});
-h+=S.timer?'<button data-a="tStop">⏹ Parar tempo</button>':'<button class="gr" data-a="tStart">⏱ Iniciar '+(S.secs[c.type]||30)+' s</button>';
-if(c.type==='pergunta'&&c.answer)h+=ui.showPriv?'<span class="privans">Certa: '+'ABC'[c.correct]+' · '+esc(c.answer)+'</span><button class="ghost" data-a="ansAll">'+(S.showAnswer?'Esconder do ecrã':'Mostrar a todos')+'</button>':'<button class="ghost" data-a="priv">👁 Ver resposta</button>';}
+h+='<button class="'+(fulls.length?'':'or ')+'big spinbtn" style="--tc:'+(nt?nt.color:'#ff7a1a')+';--tt:'+ink(nt?nt.color:'#ff7a1a')+'" data-a="spin" '+(sp||!C.remaining(S).length?'disabled':'')+'>🚨 Rodar o globo'+'</button>';
+if(c&&!sp){const i=S.spin.i,d=S.draws[i];C.playersFor(S,i).forEach(t=>{const r=d.results[t.id];const qa=c.type==='pergunta'&&!c.open?myAns(t.id):null;h+='<div class="res" style="--tc:'+t.color+'"><b>'+esc(t.name)+'</b>'+(c.type==='pergunta'&&!c.open?'<span class="qa">'+(qa?'respondeu '+'ABC'[qa.choice]:'à espera…')+'</span>':'')+'<button class="y'+(r==='ok'?' on':'')+'" data-a="res" data-t="'+t.id+'" data-v="ok">✔ Cumpriu</button><button class="n'+(r==='fail'?' on':'')+'" data-a="res" data-t="'+t.id+'" data-v="fail">✖ Falhou</button></div>';});
+h+=S.timer?(C.timerLeft(S,Date.now())===0?'<button class="gr" data-a="tStart">⏱ Recomeçar '+(S.secs[c.type]||30)+' s</button>':'')+'<button class="gr" data-a="tAdd">+30 s</button><button data-a="tStop">⏹ Parar tempo</button>':'<button class="gr" data-a="tStart">⏱ Iniciar '+(S.secs[c.type]||30)+' s</button>';
+if(c.type==='pergunta'&&c.answer)h+=ui.showPriv?'<span class="privans">'+(c.open?'Resposta: ':'Certa: '+'ABC'[c.correct]+' · ')+esc(c.answer)+'</span><button class="ghost" data-a="ansAll">'+(S.showAnswer?'Esconder do ecrã':'Mostrar a todos')+'</button>':'<button class="ghost" data-a="priv">👁 Ver resposta</button>';}
 h+='<div class="sp"></div><span class="keys" title="Atalhos de teclado">⌨ Espaço rodar · T tempo · 1-5 cumpriu · R resposta</span><button class="ghost" data-a="undoAsk" '+(S.draws.length&&!sp?'':'disabled')+'>↶ Anular bola</button>'+(fulls.length?'':'<button class="danger" data-a="endAsk">Terminar</button>')+'</div></div>';
 return h;}
 /* ---------- 3. FIM ---------- */
@@ -881,7 +891,7 @@ function tvView(){let h='<div class="tvcorner"><button data-a="fs">⛶ Ecrã int
 if(S.phase==='setup'){const locked=S.teams.filter(t=>pickState(t.id)==='locked').length;
 h+='<div class="wrap"><div class="center" style="min-height:88vh;justify-content:center">'+logo('hero')+'<p class="tagline">Desafia a tua equipa. Faz bingo. Diverte-te!</p><div class="tvteams">'+S.teams.map(t=>{const ps=pickState(t.id);return '<div class="ttile mini'+(ps==='locked'?' sel':'')+'" style="--tc:'+t.color+'"><span class="em">'+teamIcon(t)+'</span><b>'+esc(t.name)+'</b><small>'+(ps==='locked'?'✔ Cartela escolhida':ps==='picking'?'A escolher…':'À espera')+'</small></div>';}).join('')+'</div><p class="tvmsg">'+(locked<S.teams.length?'AS EQUIPAS ESTÃO A ESCOLHER AS CARTELAS':'O JOGO VAI COMEÇAR')+'</p></div></div>';return h;}
 if(S.phase==='ended')return h+'<div class="wrap">'+tvFinale()+'</div>';
-const rem=C.remaining(S).length,nt=C.turnTeam(S);
+const rem=C.remaining(S).length,nt=null;
 h+='<div class="wrap tvplay"><div class="tvtop">'+logo('tvl')+railHTML()+'</div><div class="tvgrid">';
 h+='<section class="npanel n-lime"><h3>🏆 Ranking ao vivo <span class="live">● LIVE</span></h3>'+rankRows()+'</section>';
 h+='<section class="tvcenter"><div class="globebox"><canvas id="globe" aria-label="Globo do bingo com '+rem+' bolas"></canvas></div><p class="mu" style="text-align:center">'+S.draws.length+' bola'+(S.draws.length===1?'':'s')+' tirada'+(S.draws.length===1?'':'s')+' · '+rem+' no globo</p></section>';
@@ -920,17 +930,17 @@ if(w){h+='<p class="finsub">EQUIPA VENCEDORA</p><div class="trophy-big">'+SVG.tr
 else if(C.tied(S).length)h+='<h2 class="display title" style="font-size:2.4rem">EMPATE!</h2><p class="mu">Pergunta-relâmpago a decorrer…</p>';
 h+='<div class="thanks">'+SVG.ghost+'<div><b>Parabéns a todos!</b><br>Foi um jantar incrível!</div></div><button class="lime big" data-a="ttab" data-v="ranking" style="width:100%">VER RANKING FINAL</button></div>';return h;}
 const cur=S.spin;let strip='';
-if(!cur){const nt=C.turnTeam(S);strip='<div class="strip"><span class="mu">À espera da primeira bola…</span>'+(nt?'<span class="turn2" style="--tc:'+nt.color+'">Vez de rodar: '+teamIcon(nt)+' '+esc(nt.name)+'</span>':'')+'</div>';}
+if(!cur){const nt=null;strip='<div class="strip"><span class="mu">À espera da primeira bola…</span>'+(nt?'<span class="turn2" style="--tc:'+nt.color+'">Vez de rodar: '+teamIcon(nt)+' '+esc(nt.name)+'</span>':'')+'</div>';}
 else if(spinning(now))strip='<div class="strip"><div class="spinball sm"></div><b class="spinning" style="padding:0;font-size:1.2rem">A RODAR…</b></div>';
 else{const c=S.challenges.find(x=>x.n===cur.n),ty=tdef(c),d=S.draws[cur.i],plays=C.playersFor(S,cur.i).some(x=>x.id===tid),r=d&&d.results[tid];
 strip='<div class="strip">'+ballHTML(c.n,'')+'<div class="sinfo"><span class="typ" style="--tyc:'+ty.color+';margin:0">'+ty.icon+' '+ty.label+'</span><b>'+esc(c.title)+'</b></div></div>';
-if(plays&&c.type==='pergunta'&&!r)strip+=qOptions(c,'team',tid)+(myAns(tid)?'<div class="notyours">Resposta enviada. À espera do resultado…</div>':'<div class="notyours">Toquem na resposta certa antes que o tempo acabe!</div>');else strip+=plays?(r==='ok'?'<div class="yours" style="--tc:'+t.color+';animation:none">✔ CUMPRIDO!</div>':r==='fail'?'<div class="notyours">Não foi desta. A bola volta ao globo.</div>':'<button class="yours" style="--tc:'+t.color+';width:100%;border:0" data-a="ttab" data-v="desafio">É CONVOSCO! Ver desafio ›</button>'):'<div class="notyours">'+((S.cards[tid]||[]).includes(c.n)?'Esta casa já está preenchida.':'Este número não está na vossa cartela.')+'</div>';}
+if(plays&&c.type==='pergunta'&&!c.open&&!r)strip+=qOptions(c,'team',tid)+(myAns(tid)?'<div class="notyours">Resposta enviada. À espera do resultado…</div>':'<div class="notyours">Toquem na resposta certa antes que o tempo acabe!</div>');else strip+=plays?(r==='ok'?'<div class="yours" style="--tc:'+t.color+';animation:none">✔ CUMPRIDO!</div>':r==='fail'?'<div class="notyours">Não foi desta. A bola volta ao globo.</div>':'<button class="yours" style="--tc:'+t.color+';width:100%;border:0" data-a="ttab" data-v="desafio">É CONVOSCO! Ver desafio ›</button>'):'<div class="notyours">'+((S.cards[tid]||[]).includes(c.n)?'Esta casa já está preenchida.':'Este número não está na vossa cartela.')+'</div>';}
 h+=strip;
 const curN=cur&&!spinning(now)?cur.n:null;
 h+='<div class="tcard">'+cardHTML(t,{cur:curN})+'</div>';
 h+='<div class="progbox">⭐ <div>'+(me.full?'<b>BINGO! Cartela cheia!</b>':me.cells?'<b>Já têm '+me.cells+' de '+me.total+' casas</b>'+(me.lines?'<br><small>'+me.lines+' linha'+(me.lines>1?'s':'')+' completa'+(me.lines>1?'s':'')+'</small>':''):'<b>Ainda sem casas preenchidas</b>')+'<br><small>'+me.rank+'.º lugar no ranking</small></div></div>';
 return h;}
-function rulesHTML(){return '<div class="npanel n-or"><h3>📜 Regras</h3><ol class="rules-l"><li>O moderador toca a <b>sirene</b> e o globo tira um número.</li><li>Se o número está na vossa cartela, <b>é convosco!</b></li><li>Têm o tempo do contador para cumprir o desafio: <b>❓ pergunta</b>, <b>🎭 mímica</b> ou <b>🎤 karaoke</b>.</li><li>Nas perguntas, respondem aqui no telemóvel (A, B ou C). Só conta a primeira resposta e a app valida sozinha.</li><li>Cumpriram? A casa fica pintada com a cor da equipa. Falharam? A bola volta ao globo e há nova oportunidade.</li><li><b>Ganha a primeira equipa a encher a cartela.</b></li><li>Só atua quem quiser: a equipa escolhe quem vai.</li></ol></div>';}
+function rulesHTML(){return '<div class="npanel n-or"><h3>📜 Regras</h3><ol class="rules-l"><li>O moderador toca a <b>sirene</b> e o globo tira um número.</li><li>Se o número está na vossa cartela, <b>é convosco!</b></li><li>Têm o tempo do contador para cumprir o desafio: <b>❓ pergunta</b>, <b>🎭 mímica</b> ou <b>🎤 karaoke</b>.</li><li>Perguntas fechadas: respondem aqui no telemóvel (A, B ou C). Só conta a primeira resposta e a app valida sozinha.</li><li>Perguntas abertas: respondem em voz alta e o moderador diz se está certo.</li><li>Cumpriram? A casa fica pintada com a cor da equipa. Falharam? A bola volta ao globo e há nova oportunidade.</li><li><b>Ganha a primeira equipa a encher a cartela</b> (4 perguntas, 1 mímica e 1 karaoke). Se duas equipas fecharem na mesma bola, ganha a que respondeu ou cumpriu primeiro.</li><li>Só atua quem quiser: a equipa escolhe quem vai.</li></ol></div>';}
 /* ---------- overlays ---------- */
 function overlay(){if(ui.links)return '<div class="ov" data-a="noL"><div class="mbox" role="dialog" aria-modal="true" style="width:min(640px,100%)"><h3>Links das equipas</h3><p class="mu">Cada equipa lê o seu QR code ou abre o link.</p>'+linksHTML()+'<div class="row"><button class="or" data-a="noL">Fechar</button></div></div></div>';
 if(ui.confirm){const k=ui.confirm;return '<div class="ov" data-a="noC"><div class="mbox" role="dialog" aria-modal="true"><h3>'+esc(k.title)+'</h3><p class="mu">'+esc(k.text)+'</p><div class="row"><button data-a="noC">Cancelar</button><button class="'+(k.danger?'danger':'or')+'" data-a="yes">'+esc(k.yes)+'</button></div></div></div>';}
@@ -953,7 +963,7 @@ pal(el){ui.pal=ui.pal===el.dataset.id?null:el.dataset.id;render();},
 setColor(el){ui.pal=null;act(s=>C.setTeam(s,el.dataset.id,{color:el.dataset.c}));},
 addTeam(){act(s=>C.addTeam(s));},
 rmTeam(el){act(s=>C.removeTeam(s,el.dataset.id));},
-size(el){act(s=>C.setSize(s,+el.dataset.k));},
+
 shuffle(){act(s=>C.generateCards(s));toast('Cartelas baralhadas.','ok');},
 rmLogo(){act(s=>{s.logo=null;return{ok:true};});},
 startAsk(){const miss=S.teams.filter(t=>pickState(t.id)!=='locked');if(!miss.length)return act(s=>C.start(s,PICKS));ask('Começar sem todas as escolhas?',miss.map(t=>t.name).join(', ')+' ainda não confirmaram. Ficam com a cartela que está no ecrã delas.','Começar mesmo assim',s=>C.start(s,PICKS));},
@@ -967,6 +977,7 @@ noL(){ui.links=false;render();},
 copy(el){const t=S.teams.find(x=>x.id===el.dataset.id);if(!t)return;const link=teamLink(t);try{navigator.clipboard.writeText(link).then(()=>toast('Link de '+t.name+' copiado','ok'),()=>selectCode(t.id));}catch(e){selectCode(t.id);}},
 tStart(){act(s=>C.timerStart(s,Date.now()));},
 tStop(){act(s=>C.timerStop(s));},
+tAdd(){act(s=>C.timerAdd(s,Date.now(),30));},
 priv(){ui.showPriv=true;render();},
 ansAll(){act(s=>{s.showAnswer=!s.showAnswer;return{ok:true};});},
 undoAsk(){const l=S.draws[S.draws.length-1];ask('Anular a bola '+l.n+'?','Os resultados desta ronda são apagados e a vez de rodar volta à equipa anterior.','Anular bola',s=>C.undoSpin(s),true);},
@@ -1004,12 +1015,13 @@ else if(k==='r'){const c=S.spin&&S.challenges.find(x=>x.n===S.spin.n);if(c&&c.ty
 else if(/^[1-8]$/.test(k)&&S.spin&&!spinning(Date.now())){const pl=C.playersFor(S,S.spin.i);const t=pl[+k-1];if(t){const d=S.draws[S.spin.i];act(s=>C.setResult(s,S.spin.i,t.id,d.results[t.id]==='ok'?null:'ok'));}}});
 document.addEventListener('change',e=>{const el=e.target,ds=el.dataset;
 if(ds.tn!==undefined){const r=act(s=>C.setTeam(s,ds.tn,{name:el.value}));if(r.ok===false)render();}
-else if(ds.pool!==undefined){const r=act(s=>C.setPool(s,+el.value));if(r.ok===false)render();}
+else if(ds.poolt){const r=act(s=>C.setPoolT(s,ds.poolt,+el.value));if(r.ok===false)render();}
 else if(ds.secs){const r=act(s=>C.setSecs(s,ds.secs,el.value));if(r.ok===false)render();}
 else if(ds.ct)act(s=>C.setChallenge(s,+ds.ct,{type:el.value}));
 else if(ds.cf)act(s=>C.setChallenge(s,+ds.n,{[ds.cf]:el.value}));
 else if(ds.opt!==undefined)act(s=>C.setChallenge(s,+ds.n,{opt:[+ds.opt,el.value]}));
 else if(ds.corr)act(s=>C.setChallenge(s,+ds.corr,{correct:+el.value}));
+else if(ds.qopen)act(s=>C.setChallenge(s,+ds.qopen,{open:el.value==='1'}));
 else if(ds.cfg==='eventName'){const v=el.value.trim();if(!v){toast('O nome não pode ficar vazio.','er');render();return;}act(s=>{s.eventName=v.slice(0,60);return{ok:true};});}
 else if(el.id==='logo'&&el.files[0]){if(el.files[0].size>120*1024)return toast('Imagem demasiado grande (máx. 120 KB).','er');const fr=new FileReader();fr.onload=()=>act(s=>{s.logo=String(fr.result);return{ok:true};});fr.readAsDataURL(el.files[0]);}});
 addEventListener('hashchange',render);
