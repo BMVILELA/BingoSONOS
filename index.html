@@ -399,7 +399,7 @@ body{background:radial-gradient(1200px 700px at 70% -20%,rgba(161,77,255,.35),tr
 
 /* perguntas de escolha múltipla */
 .tcard.fresh{animation:cardpop .45s ease}@keyframes cardpop{0%{transform:scale(.94) rotate(-2deg);opacity:.4}100%{transform:none;opacity:1}}
-body::after{content:'versão 27/10 · roda equipa a equipa';position:fixed;right:6px;top:3px;font:600 10px/1 Rubik,sans-serif;color:#fff;opacity:.35;pointer-events:none;z-index:9999}
+body::after{content:'versão 27/10 · 13h';position:fixed;right:6px;top:3px;font:600 10px/1 Rubik,sans-serif;color:#fff;opacity:.35;pointer-events:none;z-index:9999}
 .wblock{margin:10px 0}.wheel{position:relative;width:min(280px,72vw);aspect-ratio:1;margin:8px auto}.wheel.big{width:min(330px,26vw)}.wptr{position:absolute;top:-8px;left:50%;transform:translateX(-50%);border-left:15px solid transparent;border-right:15px solid transparent;border-top:28px solid #fff;z-index:2;filter:drop-shadow(0 2px 4px rgba(0,0,0,.6))}.wrot{width:100%;height:100%;will-change:transform}.wrot svg{width:100%;height:100%;display:block;filter:drop-shadow(0 0 18px rgba(155,77,255,.45))}.wturn{text-align:center;font-weight:800;color:var(--tc)}.wres{text-align:center;font-size:1.15em;font-weight:700;margin:6px 0 4px}.wres b{color:#b5ff2a}.whlist{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:6px}.whlist .chip{font-size:.85em}
 .tvwheel{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh}.wheel.tvw{width:min(540px,34vw,62vh)}.wturn.big{font-size:1.6rem}.wres.big{font-size:2rem}
 .qopen{display:grid;gap:6px;margin:12px 0;padding:14px 16px;border-radius:16px;border:2px dashed rgba(190,242,100,.55);background:rgba(190,242,100,.07);text-align:left}.qopen b{font-size:1.05em}.qopen span{opacity:.85}.qopen .qans{margin-top:6px;font-size:1.15em;color:#bef264}
@@ -618,7 +618,7 @@ const KEY='bingo-nos-halloween-v7',PKEY='bingo-nos-picks-v5';
 const BASE_URL='https://claude.ai/artifact/8fLG9EvydFAcW3wQdwiqM7';
 /* ---------- estado + sincronização ---------- */
 let clockOff=0;const offS=[];const gnow=()=>Date.now()+clockOff;
-function clockSample(st){if(isOwner||!st||!st.sentAt)return;const t=Date.now();offS.push([t,st.sentAt-t]);while(offS.length&&t-offS[0][0]>60000)offS.shift();clockOff=Math.max.apply(null,offS.map(x=>x[1]));}
+function clockSample(st){if(route()==='mod'||!st||!st.sentAt)return;const t=Date.now();offS.push([t,st.sentAt-t]);while(offS.length&&t-offS[0][0]>60000)offS.shift();clockOff=Math.max.apply(null,offS.map(x=>x[1]));}
 function parse(j){try{const o=typeof j==='string'?JSON.parse(j):j;if(o&&o.v===7&&Array.isArray(o.teams))return C.migrate(Object.assign(C.fresh(),o));}catch(e){}return null;}
 function lsGet(k){try{return localStorage.getItem(k);}catch(e){return null;}}
 function lsSet(k,v){try{localStorage.setItem(k,v);}catch(e){}}
@@ -627,9 +627,9 @@ let PICKS=(()=>{try{return JSON.parse(lsGet(PKEY)||'{}')||{};}catch(e){return{};
 const SB=(window.BINGO_SUPABASE&&/^https:\/\//.test(window.BINGO_SUPABASE.url||'')&&(window.BINGO_SUPABASE.anonKey||'').length>20&&window.supabase)?window.BINGO_SUPABASE:null;
 let db=null,ref=null,online=false,isOwner=!SB,writing=false,dirty=false,syncErr=null;
 const bc='BroadcastChannel'in window?new BroadcastChannel('bingo-nos-v5'):null;
-async function push(){if(isOwner)S.sentAt=Date.now();lsSet(KEY,JSON.stringify(S));if(bc)bc.postMessage('s');if(!ref)return;if(writing){dirty=true;return;}writing=true;pushFinalAgain();
+async function push(){if(isOwner&&route()==='mod')S.sentAt=Date.now();lsSet(KEY,JSON.stringify(S));if(bc)bc.postMessage('s');if(!ref)return;if(writing){dirty=true;return;}writing=true;pushFinalAgain();
 do{dirty=false;try{await ref.set({rev:S.rev,json:JSON.stringify(S)});if(syncErr){syncErr=null;render();}}catch(e){console.warn('Gravação recusada',e);if(e&&e.code==='invalid_argument'){if(SB){syncErr=(e.message||'recusado').slice(0,160);toast('O Supabase recusou a gravação: '+syncErr+'. Corre outra vez o ficheiro supabase-setup.sql no SQL Editor do Supabase.','er');render();break;}isOwner=false;toast('Sem permissão para alterar o jogo.','er');render();break;}if(e&&e.code==='unavailable'){await new Promise(r=>setTimeout(r,600+Math.random()*600));dirty=true;}else{toast('Não foi possível sincronizar ('+(e&&e.code||'erro')+').','er');break;}}}while(dirty);writing=false;}
-let endedSent=0;function pushFinalAgain(){if(!isOwner||S.phase!=='ended'||endedSent===S.rev)return;endedSent=S.rev;[1500,4000].forEach(t=>setTimeout(()=>{if(isOwner&&S.phase==='ended')push();},t));}
+let endedSent=0;function pushFinalAgain(){if(!isOwner||route()!=='mod'||S.phase!=='ended'||endedSent===S.rev)return;endedSent=S.rev;[1500,4000].forEach(t=>setTimeout(()=>{if(isOwner&&S.phase==='ended')push();},t));}
 let gotRemote=false;
 function adopt(next){if(!next)return;clockSample(next);if(isOwner||gotRemote){if(next.rev<=S.rev)return;}else if(next.rev===S.rev&&JSON.stringify(next)===JSON.stringify(S)){gotRemote=true;return;}gotRemote=true;const prev=S;S=next;lsSet(KEY,JSON.stringify(S));react(prev,S);render();autoValidate();}
 const MYPICKS={};let RAWPICKS=PICKS;
@@ -661,7 +661,7 @@ const pwHash=(str,seed=7)=>{let h1=0xdeadbeef^seed,h2=0x41c6ce57^seed;for(let i=
 async function connectSupa(){try{sbClient=window.supabase.createClient(SB.url,SB.anonKey,{auth:{persistSession:false,autoRefreshToken:false}});
 isOwner=lsGet('bingo-mod')===MOD_HASH;
 db=supaAdapter(sbClient);ref=db.doc('game/main');
-ref.onSnapshot(snap=>{if(!snap.exists){remoteExists=false;if(isOwner){if(!S.rev)S.rev=1;push();}return;}remoteExists=true;const next=parse(snap.data().json);if(next)adopt(next);else if(isOwner){S.rev=Math.max(S.rev,(snap.data().rev||0))+1;push();}});
+ref.onSnapshot(snap=>{if(!snap.exists){remoteExists=false;if(isOwner&&route()==='mod'){if(!S.rev)S.rev=1;push();}return;}remoteExists=true;const next=parse(snap.data().json);if(next)adopt(next);else if(isOwner&&route()==='mod'){S.rev=Math.max(S.rev,(snap.data().rev||0))+1;push();}});
 db.collection('picks').onSnapshot(q=>{const p={};q.docs.forEach(d=>{const x=d.data();if(x)p[d.id]=x;});setPicks(p);});
 setTimeout(render,0);}catch(e){console.warn(e);toast('Não foi possível ligar ao Supabase. Confirma o endereço e a chave.','er');}}
 function doLogin(){const pw=($('#lg_pass')||{}).value||'';if(!pw)return toast('Escreve a palavra-passe.','er');if(pwHash(pw)!==MOD_HASH)return toast('Palavra-passe errada.','er');
@@ -670,7 +670,7 @@ function loginView(){return '<div class="wrap joinw"><div class="center splash">
 (async function connect(){try{if(SB){connectSupa();return;}if(!window.claude||!window.claude.use)return;const[d,u]=await Promise.all([window.claude.use('db'),window.claude.use('user')]);
 if(u){try{isOwner=await u.isOwner();}catch(e){}}
 if(!d){render();return;}db=d;ref=db.doc('game/state');online=true;
-ref.onSnapshot(snap=>{if(!snap.exists){if(isOwner){if(!S.rev)S.rev=1;push();}return;}const next=parse(snap.data().json);if(next)adopt(next);else if(isOwner){S.rev=Math.max(S.rev,(snap.data().rev||0))+1;push();}},()=>{online=false;ref=null;render();});
+ref.onSnapshot(snap=>{if(!snap.exists){if(isOwner&&route()==='mod'){if(!S.rev)S.rev=1;push();}return;}const next=parse(snap.data().json);if(next)adopt(next);else if(isOwner&&route()==='mod'){S.rev=Math.max(S.rev,(snap.data().rev||0))+1;push();}},()=>{online=false;ref=null;render();});
 db.collection('picks').onSnapshot(q=>{const p={};q.docs.forEach(d=>{const x=d.data();if(x)p[d.id]=x;});setPicks(p);},()=>{});
 render();}catch(e){console.warn(e);}})();
 /* ---------- perguntas: respostas e validação automática ---------- */
@@ -1010,7 +1010,7 @@ let lastSec=null,wasSpin=false;
 function tick(){const now=gnow();const els=document.querySelectorAll('[data-rt]');if(els.length){const l=C.timerLeft(S,now);if(l!=null){const sec=Math.ceil(l/1000);els.forEach(el=>{const v=el.dataset.fmt==='mm'?fmtT(l):String(sec);if(el.textContent!==v)el.textContent=v;el.classList.toggle('c',l<=10000);const pl=el.closest('.tpill');if(pl)pl.classList.toggle('c',l<=10000);});if(sec!==lastSec&&sec<=5&&sec>0)sfx.tick();if(sec===0&&lastSec===1)tone(220,.6,0,'sawtooth',.08);lastSec=sec;}}
 const sp=spinning(now);const was=wasSpin;wasSpin=sp;if(was&&!sp){render();autoValidate();}if(S.timer&&C.timerLeft(S,now)===0&&!tick.exp){tick.exp=S.timer.startedAt;render();autoValidate();}else if(!S.timer||tick.exp!==S.timer.startedAt){if(S.timer&&C.timerLeft(S,now)>0)tick.exp=null;}}
 setInterval(tick,200);
-setInterval(()=>{if(isOwner&&ref&&!writing&&S.phase==='playing')push();},5000);
+setInterval(()=>{if(isOwner&&route()==='mod'&&ref&&!writing&&S.phase==='playing')push();},5000);
 setInterval(()=>{if(isTV()&&S.phase==='ended'){const w=C.winner(S);if(w)rain([w.color,'#ffd23f','#b5ff2a','#fff','#a14dff'],4000);}},14000);
 /* ---------- ações ---------- */
 function ask(title,text,yes,fn,danger){ui.confirm={title,text,yes,fn,danger};render();}
