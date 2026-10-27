@@ -617,6 +617,8 @@ const SPIN_MS=4200;
 const KEY='bingo-nos-halloween-v7',PKEY='bingo-nos-picks-v5';
 const BASE_URL='https://claude.ai/artifact/8fLG9EvydFAcW3wQdwiqM7';
 /* ---------- estado + sincronização ---------- */
+let clockOff=0;const offS=[];const gnow=()=>Date.now()+clockOff;
+function clockSample(st){if(isOwner||!st||!st.sentAt)return;const t=Date.now();offS.push([t,st.sentAt-t]);while(offS.length&&t-offS[0][0]>60000)offS.shift();clockOff=Math.max.apply(null,offS.map(x=>x[1]));}
 function parse(j){try{const o=typeof j==='string'?JSON.parse(j):j;if(o&&o.v===7&&Array.isArray(o.teams))return C.migrate(Object.assign(C.fresh(),o));}catch(e){}return null;}
 function lsGet(k){try{return localStorage.getItem(k);}catch(e){return null;}}
 function lsSet(k,v){try{localStorage.setItem(k,v);}catch(e){}}
@@ -625,17 +627,17 @@ let PICKS=(()=>{try{return JSON.parse(lsGet(PKEY)||'{}')||{};}catch(e){return{};
 const SB=(window.BINGO_SUPABASE&&/^https:\/\//.test(window.BINGO_SUPABASE.url||'')&&(window.BINGO_SUPABASE.anonKey||'').length>20&&window.supabase)?window.BINGO_SUPABASE:null;
 let db=null,ref=null,online=false,isOwner=!SB,writing=false,dirty=false,syncErr=null;
 const bc='BroadcastChannel'in window?new BroadcastChannel('bingo-nos-v5'):null;
-async function push(){lsSet(KEY,JSON.stringify(S));if(bc)bc.postMessage('s');if(!ref)return;if(writing){dirty=true;return;}writing=true;pushFinalAgain();
+async function push(){if(isOwner)S.sentAt=Date.now();lsSet(KEY,JSON.stringify(S));if(bc)bc.postMessage('s');if(!ref)return;if(writing){dirty=true;return;}writing=true;pushFinalAgain();
 do{dirty=false;try{await ref.set({rev:S.rev,json:JSON.stringify(S)});if(syncErr){syncErr=null;render();}}catch(e){console.warn('Gravação recusada',e);if(e&&e.code==='invalid_argument'){if(SB){syncErr=(e.message||'recusado').slice(0,160);toast('O Supabase recusou a gravação: '+syncErr+'. Corre outra vez o ficheiro supabase-setup.sql no SQL Editor do Supabase.','er');render();break;}isOwner=false;toast('Sem permissão para alterar o jogo.','er');render();break;}if(e&&e.code==='unavailable'){await new Promise(r=>setTimeout(r,600+Math.random()*600));dirty=true;}else{toast('Não foi possível sincronizar ('+(e&&e.code||'erro')+').','er');break;}}}while(dirty);writing=false;}
 let endedSent=0;function pushFinalAgain(){if(!isOwner||S.phase!=='ended'||endedSent===S.rev)return;endedSent=S.rev;[1500,4000].forEach(t=>setTimeout(()=>{if(isOwner&&S.phase==='ended')push();},t));}
 let gotRemote=false;
-function adopt(next){if(!next)return;if(isOwner||gotRemote){if(next.rev<=S.rev)return;}else if(next.rev===S.rev&&JSON.stringify(next)===JSON.stringify(S)){gotRemote=true;return;}gotRemote=true;const prev=S;S=next;lsSet(KEY,JSON.stringify(S));react(prev,S);render();autoValidate();}
+function adopt(next){if(!next)return;clockSample(next);if(isOwner||gotRemote){if(next.rev<=S.rev)return;}else if(next.rev===S.rev&&JSON.stringify(next)===JSON.stringify(S)){gotRemote=true;return;}gotRemote=true;const prev=S;S=next;lsSet(KEY,JSON.stringify(S));react(prev,S);render();autoValidate();}
 const MYPICKS={};let RAWPICKS=PICKS;
-function setPicks(p){RAWPICKS=p;p=Object.assign({},p);Object.keys(MYPICKS).forEach(k=>{const m=MYPICKS[k];if(Date.now()-m.at>15000){delete MYPICKS[k];return;}if(!p[k]||(p[k].at||0)<m.at)p[k]=m;else delete MYPICKS[k];});const prev=PICKS;PICKS=p;if(JSON.stringify(prev)!==JSON.stringify(p)){render();autoValidate();}}
+function setPicks(p){RAWPICKS=p;p=Object.assign({},p);Object.keys(MYPICKS).forEach(k=>{const m=MYPICKS[k];if(gnow()-m.at>15000){delete MYPICKS[k];return;}if(!p[k]||(p[k].at||0)<m.at)p[k]=m;else delete MYPICKS[k];});const prev=PICKS;PICKS=p;if(JSON.stringify(prev)!==JSON.stringify(p)){render();autoValidate();}}
 if(bc)bc.onmessage=e=>{if(ref)return;if(e.data==='p'){try{setPicks(JSON.parse(lsGet(PKEY)||'{}'));}catch(x){}}else adopt(parse(lsGet(KEY)));};
 addEventListener('storage',e=>{if(ref)return;if(e.key===KEY)adopt(parse(e.newValue));if(e.key===PKEY){try{setPicks(JSON.parse(e.newValue||'{}'));}catch(x){}}});
 function act(fn){if(!isOwner){toast('Só o moderador pode alterar o jogo.','er');return{ok:false};}const next=JSON.parse(JSON.stringify(S));const r=fn(next)||{ok:true};if(r.ok===false){if(r.msg)toast(r.msg,'er');return r;}next.rev=S.rev+1;const prev=S;S=next;react(prev,S);if(window.event&&window.event.type==='change')setTimeout(render,0);else render();push();return r;}
-async function writePick(tid,data){const body=Object.assign({gid:S.gid,at:Date.now()},data);
+async function writePick(tid,data){const body=Object.assign({gid:S.gid,at:gnow()},data);
 if(db&&!gotRemote&&!isOwner){toast('A ligar ao jogo… tenta outra vez daqui a um segundo.','er');return;}
 if(db){MYPICKS[tid]=body;setPicks(RAWPICKS);try{await db.doc('picks/'+tid).set(body);}catch(e){delete MYPICKS[tid];setPicks(RAWPICKS);toast(e&&e.code==='invalid_argument'?(SB?'Não foi possível guardar. Recarrega a página e tenta outra vez.':'Sem permissão para escolher o cartão. Pede ao moderador acesso de colaborador ao jogo.'):'Não foi possível guardar a escolha. Tenta outra vez.','er');}return;}
 const p=Object.assign({},PICKS,{[tid]:body});lsSet(PKEY,JSON.stringify(p));if(bc)bc.postMessage('p');setPicks(p);}
@@ -673,11 +675,11 @@ db.collection('picks').onSnapshot(q=>{const p={};q.docs.forEach(d=>{const x=d.da
 render();}catch(e){console.warn(e);}})();
 /* ---------- perguntas: respostas e validação automática ---------- */
 function myAns(tid){const a=PICKS['a-'+tid];return a&&S.spin&&a.sid===S.spin.id&&[0,1,2].includes(a.choice)?a:null;}
-function qRevealed(){if(!S.spin)return false;const c=S.challenges.find(x=>x.n===S.spin.n);if(!c||c.type!=='pergunta')return false;if(S.showAnswer)return true;if(c.open)return false;const d=S.draws[S.spin.i],pl=C.playersFor(S,S.spin.i);if(pl.length&&pl.every(t=>d.results[t.id]||myAns(t.id)))return true;return !!(S.timer&&C.timerLeft(S,Date.now())===0);}
-function canAnswer(tid){if(S.phase!=='playing'||!S.spin||spinning(Date.now()))return false;const c=S.challenges.find(x=>x.n===S.spin.n);if(!c||c.type!=='pergunta'||c.open)return false;const d=S.draws[S.spin.i];if(!C.playersFor(S,S.spin.i).some(t=>t.id===tid))return false;if(d.results[tid]||myAns(tid))return false;return !(S.timer&&C.timerLeft(S,Date.now())===0);}
-function autoValidate(){if(route()!=='mod'||!isOwner||S.phase!=='playing'||!S.spin||spinning(Date.now()))return;const c=S.challenges.find(x=>x.n===S.spin.n);if(!c||c.type!=='pergunta'||c.open)return;
+function qRevealed(){if(!S.spin)return false;const c=S.challenges.find(x=>x.n===S.spin.n);if(!c||c.type!=='pergunta')return false;if(S.showAnswer)return true;if(c.open)return false;const d=S.draws[S.spin.i],pl=C.playersFor(S,S.spin.i);if(pl.length&&pl.every(t=>d.results[t.id]||myAns(t.id)))return true;return !!(S.timer&&C.timerLeft(S,gnow())===0);}
+function canAnswer(tid){if(S.phase!=='playing'||!S.spin||spinning(gnow()))return false;const c=S.challenges.find(x=>x.n===S.spin.n);if(!c||c.type!=='pergunta'||c.open)return false;const d=S.draws[S.spin.i];if(!C.playersFor(S,S.spin.i).some(t=>t.id===tid))return false;if(d.results[tid]||myAns(tid))return false;return !(S.timer&&C.timerLeft(S,gnow())===0);}
+function autoValidate(){if(route()!=='mod'||!isOwner||S.phase!=='playing'||!S.spin||spinning(gnow()))return;const c=S.challenges.find(x=>x.n===S.spin.n);if(!c||c.type!=='pergunta'||c.open)return;
 const i=S.spin.i,d=S.draws[i],pl=C.playersFor(S,i),todo=[];pl.map(t=>[t,myAns(t.id)]).filter(x=>x[1]&&!d.results[x[0].id]).sort((x,y)=>(x[1].at||0)-(y[1].at||0)).forEach(([t,a])=>todo.push([t.id,a.choice===c.correct?'ok':'fail']));
-if(S.timer&&C.timerLeft(S,Date.now())===0)pl.forEach(t=>{if(!d.results[t.id]&&!todo.some(x=>x[0]===t.id))todo.push([t.id,'fail']);});
+if(S.timer&&C.timerLeft(S,gnow())===0)pl.forEach(t=>{if(!d.results[t.id]&&!todo.some(x=>x[0]===t.id))todo.push([t.id,'fail']);});
 if(todo.length)act(s=>{todo.forEach(([tid,v])=>C.setResult(s,i,tid,v));return{ok:true};});}
 function qOpen(c,mode){return '<div class="qopen"><b>💬 Pergunta aberta</b><span>'+(mode==='mod'?'A equipa responde em voz alta. Marca ✔ ou ✖.':'Respondam em voz alta: o moderador decide se está certo.')+'</span>'+(S.showAnswer&&c.answer?'<div class="qans">Resposta: <b>'+esc(c.answer)+'</b></div>':'')+'</div>';}
 function qOptions(c,mode,tid){if(c.open)return qOpen(c,mode);if(!Array.isArray(c.options))return '';const i=S.spin.i,pl=C.playersFor(S,i),rev=qRevealed(),L='ABC';const mineA=tid?myAns(tid):null;const tap=mode==='team'&&canAnswer(tid);
@@ -705,7 +707,7 @@ const sfx={spin(){siren();for(let i=0;i<22;i++)tone(180+Math.random()*500,.05,1.
 const cv=$('#fx'),cx=cv.getContext('2d');let parts=[],raf=0;
 function sz(){cv.width=innerWidth;cv.height=innerHeight;}sz();addEventListener('resize',sz);
 function burst(cols,n){for(let i=0;i<n;i++){const a=Math.random()*6.28,v=3+Math.random()*7;parts.push({x:innerWidth/2,y:innerHeight/2.6,vx:Math.cos(a)*v,vy:Math.sin(a)*v-3,g:.17,l:110,c:cols[i%cols.length],s:4+Math.random()*6});}loopFx();}
-function rain(cols,ms){const t0=Date.now();(function r(){if(Date.now()-t0>ms)return;for(let i=0;i<4;i++)parts.push({x:Math.random()*innerWidth,y:-10,vx:(Math.random()-.5)*3,vy:2+Math.random()*3,g:.03,l:260,c:cols[i%cols.length],s:5+Math.random()*6});loopFx();requestAnimationFrame(r);})();}
+function rain(cols,ms){const t0=gnow();(function r(){if(gnow()-t0>ms)return;for(let i=0;i<4;i++)parts.push({x:Math.random()*innerWidth,y:-10,vx:(Math.random()-.5)*3,vy:2+Math.random()*3,g:.03,l:260,c:cols[i%cols.length],s:5+Math.random()*6});loopFx();requestAnimationFrame(r);})();}
 function loopFx(){if(raf)return;raf=requestAnimationFrame(function st(){cx.clearRect(0,0,cv.width,cv.height);parts=parts.filter(p=>p.l-->0);parts.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.vy+=p.g;cx.globalAlpha=Math.min(1,p.l/40);cx.fillStyle=p.c;cx.fillRect(p.x,p.y,p.s,p.s*.6);});cx.globalAlpha=1;raf=parts.length?requestAnimationFrame(st):0;if(!raf)cx.clearRect(0,0,cv.width,cv.height);});}
 /* ---------- desenhos ---------- */
 const SVG={
@@ -723,7 +725,7 @@ function hexRgb(h){h=h.replace('#','');if(h.length===3)h=h.split('').map(c=>c+c)
 function shade(hex,a){const[r,g,b]=hexRgb(hex);const f=v=>Math.round(a<0?v*(1+a):v+(255-v)*a);return 'rgb('+f(r)+','+f(g)+','+f(b)+')';}
 function ink(hex){const[r,g,b]=hexRgb(hex);return (0.299*r+0.587*g+0.114*b)/255>0.62?'#1a1022':'#ffffff';}
 function ballColor(n){const c=S.challenges.find(x=>x.n===n);return (C.TYPES[c&&c.type]||C.TYPES.pergunta).color;}
-function globeSync(){const sp=spinning(Date.now());const set=new Set(C.remaining(S));if(S.spin){if(sp&&!(G.ejectFor===S.spin.id))set.add(S.spin.n);else set.delete(S.spin.n);}
+function globeSync(){const sp=spinning(gnow());const set=new Set(C.remaining(S));if(S.spin){if(sp&&!(G.ejectFor===S.spin.id))set.add(S.spin.n);else set.delete(S.spin.n);}
 const have=new Map(G.balls.map(b=>[b.n,b]));G.balls=[...set].map(n=>have.get(n)||{n,x:(Math.random()-.5)*.5,y:.25+Math.random()*.3,z:(Math.random()-.5)*.5,vx:0,vy:0,vz:0});}
 /* vista: rotação à volta do eixo X (manivela), câmara inclinada */
 const YAW=.62,PITCH=.32,cY=Math.cos(YAW),sY=Math.sin(YAW),cP=Math.cos(PITCH),sP=Math.sin(PITCH);
@@ -743,7 +745,7 @@ ctx.quadraticCurveTo(.2,.05,.35,.25);ctx.quadraticCurveTo(.5,0,.7,.2);ctx.quadra
 ctx.fillStyle='#ffb347';ctx.beginPath();ctx.arc(-.07,-.05,.035,0,7);ctx.arc(.07,-.05,.035,0,7);ctx.fill();ctx.restore();}
 function globeLoop(t){const c=document.getElementById('globe');if(!c){G.raf=0;return;}
 const dpr=Math.min(2,window.devicePixelRatio||1),W=c.clientWidth;if(!W){G.raf=requestAnimationFrame(globeLoop);return;}if(c.width!==Math.round(W*dpr)){c.width=c.height=Math.round(W*dpr);}
-const ctx=c.getContext('2d'),now=Date.now(),sp=spinning(now);const dt=Math.min(.035,(t-(G.last||t))/1000)||.016;G.last=t;
+const ctx=c.getContext('2d'),now=gnow(),sp=spinning(now);const dt=Math.min(.035,(t-(G.last||t))/1000)||.016;G.last=t;
 /* perfil de velocidade */
 let target=.25;if(sp){const e=now-S.spin.at;target=e<500?9*e/500:e<SPIN_MS-1500?9:e<SPIN_MS-700?Math.max(1.2,9*(SPIN_MS-700-e)/800):.8;}
 G.speed+=(target-G.speed)*Math.min(1,dt*6);G.rot+=G.speed*dt;
@@ -812,8 +814,8 @@ function toast(m,k){const t=document.createElement('div');t.className='t '+(k||'
 function banner(text,sub,color,ms){const b=$('#banner');ms=ms||3200;b.innerHTML='<div class="banner" style="--tc:'+color+';--bd:'+ms+'ms"><div class="bwrap"><div class="rays"></div><div class="trophy">'+SVG.pumpkin+'</div><div class="btext">'+esc(text)+'</div><div class="bsub">'+esc(sub)+'</div></div></div>';clearTimeout(banner.t);banner.t=setTimeout(()=>b.innerHTML='',ms+100);}
 /* ---------- reações ---------- */
 function react(a,b){
-if(b.wheelAt&&(!a.wheelAt||a.wheelAt.at!==b.wheelAt.at)&&Date.now()-b.wheelAt.at<WHEEL_MS){sfx.wheel(Date.now()-b.wheelAt.at);}
-if(b.spin&&(!a.spin||a.spin.id!==b.spin.id)&&b.spin.at&&Date.now()-b.spin.at<SPIN_MS){sfx.spin();const n=b.spin.n,tid=teamHash();if(tid&&ui.ttab!=='desafio')ui.ttab='bingo';setTimeout(()=>{sfx.reveal();render();if(tid&&(S.cards[tid]||[]).includes(n)&&!C.doneBy(S,tid,n)){try{navigator.vibrate&&navigator.vibrate([200,100,200]);}catch(e){}}},Math.max(0,SPIN_MS-(Date.now()-b.spin.at)));}
+if(b.wheelAt&&(!a.wheelAt||a.wheelAt.at!==b.wheelAt.at)&&gnow()-b.wheelAt.at<WHEEL_MS){sfx.wheel(gnow()-b.wheelAt.at);}
+if(b.spin&&(!a.spin||a.spin.id!==b.spin.id)&&b.spin.at&&gnow()-b.spin.at<SPIN_MS){sfx.spin();const n=b.spin.n,tid=teamHash();if(tid&&ui.ttab!=='desafio')ui.ttab='bingo';setTimeout(()=>{sfx.reveal();render();if(tid&&(S.cards[tid]||[]).includes(n)&&!C.doneBy(S,tid,n)){try{navigator.vibrate&&navigator.vibrate([200,100,200]);}catch(e){}}},Math.max(0,SPIN_MS-(gnow()-b.spin.at)));}
 if(a.phase==='playing'||b.phase==='playing'){const ra=new Map(C.ranking(a).map(r=>[r.tid,r]));
 C.ranking(b).forEach(r=>{const o=ra.get(r.tid);if(!o)return;
 if(r.full&&!o.full){sfx.bingo();banner('BINGO!',r.name+' encheu o cartão',r.color,4500);burst([r.color,'#fff','#ffb347'],160);}
@@ -835,7 +837,7 @@ const cardFor=tid=>C.cardOf(S,tid,PICKS);
 function pickState(tid){const p=C.pickFor(S,PICKS,tid);return !p?'none':p.locked?'locked':'picking';}
 const PICK_LABEL={none:'Ainda não abriu o link',picking:'A escolher…',locked:'✔ Cartão escolhido'};
 function ballHTML(n,cls,extra){const c=S.challenges.find(x=>x.n===n),ty=tdef(c||{});return '<div class="bball '+(cls||'')+'" style="--bc:'+ty.color+(extra||'')+'"><span class="disc"><i>'+ty.icon+'</i><b>'+n+'</b></span></div>';}
-function railHTML(){if(!S.draws.length)return '';const ds=S.draws.slice(-7).reverse();const now=Date.now();return '<div class="rail" aria-label="Últimas bolas">'+ds.map((d,k)=>k===0&&spinning(now)?'<div class="bball r0 q"><span class="disc"><b>?</b></span></div>':ballHTML(d.n,'r'+k)).join('')+'</div>';}
+function railHTML(){if(!S.draws.length)return '';const ds=S.draws.slice(-7).reverse();const now=gnow();return '<div class="rail" aria-label="Últimas bolas">'+ds.map((d,k)=>k===0&&spinning(now)?'<div class="bball r0 q"><span class="disc"><b>?</b></span></div>':ballHTML(d.n,'r'+k)).join('')+'</div>';}
 /* cartela */
 function cardHTML(t,opts){opts=opts||{};const card=opts.card||S.cards[t.id]||[];const cur=opts.cur;const st=S.phase==='setup'?null:C.status(S,t);
 const playing=cur!=null&&card.includes(cur)&&!C.doneBy(S,t.id,cur);
@@ -848,8 +850,8 @@ const WHEEL_MS=4200,WCOL=['#ff7a1a','#9b4dff','#2bd27a','#ff4057','#ffd23f','#3e
 const isWheelType=c=>!!c&&(c.type==='karaoke'||c.type==='mimica');
 const chTitle=c=>c.type==='karaoke'?'Roda do karaoke':c.type==='mimica'?'Roda da mímica':c.title;
 const chText=c=>c.type==='karaoke'?'Equipa a equipa: o moderador roda a roda e a equipa canta a música que sair.':c.type==='mimica'?'Equipa a equipa: o moderador roda a roda e mostra o desafio só ao ator. A equipa tem de adivinhar.':c.text;
-const wLanded=(w,now)=>!!w&&(now||Date.now())-w.at>=WHEEL_MS;
-const wSpinning=()=>{const wa=S.wheelAt;return !!(wa&&Date.now()-wa.at<WHEEL_MS);};
+const wLanded=(w,now)=>!!w&&(now||gnow())-w.at>=WHEEL_MS;
+const wSpinning=()=>{const wa=S.wheelAt;return !!(wa&&gnow()-wa.at<WHEEL_MS);};
 function wheelAngle(at,n,k,now){const t=Math.min(1,Math.max(0,(now-at)/WHEEL_MS)),e=1-Math.pow(1-t,4),c=(k+.5)*360/n;return (360*6+360-c)*e;}
 function wheelSVG(w,secret){const n=w.opts.length,seg=360/n,R=96;let g='';
 w.opts.forEach((o,j)=>{const a0=(j*seg-90)*Math.PI/180,a1=((j+1)*seg-90)*Math.PI/180,col=WCOL[j%WCOL.length];const large=seg>180?1:0;
@@ -857,9 +859,9 @@ g+='<path d="M0 0 L'+(R*Math.cos(a0)).toFixed(2)+' '+(R*Math.sin(a0)).toFixed(2)
 const mid=j*seg+seg/2,lab=secret?'?':String(o).split(' — ')[0];const txt=lab.length>15?lab.slice(0,14)+'…':lab;
 g+='<text transform="rotate('+(mid-90).toFixed(2)+') translate(56 0)" text-anchor="middle" dominant-baseline="middle" font-size="'+(secret?16:Math.max(6,Math.min(9.5,120/Math.max(8,txt.length))))+'" font-weight="800" font-family="Rubik,sans-serif" fill="'+ink(col)+'">'+esc(txt)+'</text>';});
 return '<svg viewBox="-100 -100 200 200" aria-hidden="true"><circle r="99" fill="#1a0b2e"/>'+g+'<circle r="14" fill="#1a0b2e" stroke="#fff" stroke-width="3"/><text text-anchor="middle" dominant-baseline="middle" font-size="12">🎡</text></svg>';}
-function wheelHTML(w,secret,big){return '<div class="wheel'+(big?' big':'')+'"><div class="wptr"></div><div class="wrot" data-wat="'+w.at+'" data-wn="'+w.opts.length+'" data-wk="'+w.k+'" style="transform:rotate('+wheelAngle(w.at,w.opts.length,w.k,Date.now()).toFixed(1)+'deg)">'+wheelSVG(w,secret)+'</div></div>';}
-function tvWheelOn(){if(!S.spin||spinning(Date.now()))return false;const c=S.challenges.find(x=>x.n===S.spin.n),d=S.draws[S.spin.i];return isWheelType(c)&&!!(S.wheelAt&&S.wheelAt.i===S.spin.i&&d&&d.wh&&d.wh[S.wheelAt.tid]);}
-function wheelBlock(mode,d,i,big,noWheel){const now=Date.now(),c=S.challenges.find(x=>x.n===d.n),pl=C.playersFor(S,i),wh=d.wh||{},tm=id=>S.teams.find(x=>x.id===id);
+function wheelHTML(w,secret,big){return '<div class="wheel'+(big?' big':'')+'"><div class="wptr"></div><div class="wrot" data-wat="'+w.at+'" data-wn="'+w.opts.length+'" data-wk="'+w.k+'" style="transform:rotate('+wheelAngle(w.at,w.opts.length,w.k,gnow()).toFixed(1)+'deg)">'+wheelSVG(w,secret)+'</div></div>';}
+function tvWheelOn(){if(!S.spin||spinning(gnow()))return false;const c=S.challenges.find(x=>x.n===S.spin.n),d=S.draws[S.spin.i];return isWheelType(c)&&!!(S.wheelAt&&S.wheelAt.i===S.spin.i&&d&&d.wh&&d.wh[S.wheelAt.tid]);}
+function wheelBlock(mode,d,i,big,noWheel){const now=gnow(),c=S.challenges.find(x=>x.n===d.n),pl=C.playersFor(S,i),wh=d.wh||{},tm=id=>S.teams.find(x=>x.id===id);
 const wa=S.wheelAt&&S.wheelAt.i===i&&wh[S.wheelAt.tid]?S.wheelAt:null,mine=mode==='team'?ui.tidNow:null;let h='<div class="wblock">';
 if(wa){const w=wh[wa.tid],t=tm(wa.tid),secret=c.type==='mimica'&&mode!=='mod';
 h+='<div class="wturn" style="--tc:'+(t?t.color:'#fff')+'">🎡 Vez de <b>'+(t?teamIcon(t)+' '+esc(t.name):'')+'</b></div>'+(noWheel?'':wheelHTML(w,secret,big));
@@ -868,8 +870,8 @@ else h+='<p class="mu" style="text-align:center">'+(pl.length?(mode==='mod'?'Rod
 const done=Object.keys(wh).filter(id=>(!wa||id!==wa.tid)&&wLanded(wh[id],now)&&tm(id));
 if(done.length)h+='<div class="whlist">'+done.map(id=>{const t=tm(id),w=wh[id];return '<span class="chip" style="--tc:'+t.color+'">'+teamIcon(t)+' '+esc(t.name)+': '+(c.type==='karaoke'||mode==='mod'?esc(String(w.item).split(' — ')[0]):'🤫')+'</span>';}).join('')+'</div>';
 return h+'</div>';}
-let wRaf=0;const wLandSeen=new Set();function wheelLoop(){if(wRaf)return;wRaf=requestAnimationFrame(function st(){const now=Date.now();let any=false;document.querySelectorAll('[data-wat]').forEach(el=>{const at=+el.dataset.wat,n=+el.dataset.wn,k=+el.dataset.wk;el.style.transform='rotate('+wheelAngle(at,n,k,now).toFixed(1)+'deg)';if(now-at<WHEEL_MS)any=true;else if(!wLandSeen.has(at)){wLandSeen.add(at);if(now-at<WHEEL_MS+3000){sfx.reveal();setTimeout(render,0);}}});wRaf=any?requestAnimationFrame(st):0;});}
-function currentHTML(mod){const now=Date.now(),nt=null;const turn=nt?'<p class="turn" style="--tc:'+nt.color+'">'+(S.spin?'Próxima a rodar':'Vez de rodar')+': <b>'+esc(nt.name)+'</b></p>':'';
+let wRaf=0;const wLandSeen=new Set();function wheelLoop(){if(wRaf)return;wRaf=requestAnimationFrame(function st(){const now=gnow();let any=false;document.querySelectorAll('[data-wat]').forEach(el=>{const at=+el.dataset.wat,n=+el.dataset.wn,k=+el.dataset.wk;el.style.transform='rotate('+wheelAngle(at,n,k,now).toFixed(1)+'deg)';if(now-at<WHEEL_MS)any=true;else if(!wLandSeen.has(at)){wLandSeen.add(at);if(now-at<WHEEL_MS+3000){sfx.reveal();setTimeout(render,0);}}});wRaf=any?requestAnimationFrame(st):0;});}
+function currentHTML(mod){const now=gnow(),nt=null;const turn=nt?'<p class="turn" style="--tc:'+nt.color+'">'+(S.spin?'Próxima a rodar':'Vez de rodar')+': <b>'+esc(nt.name)+'</b></p>':'';
 if(!S.spin)return '<div class="reveal">'+turn+'<p class="waiting">'+(mod?'Carrega no botão para rodar o globo.':'À espera da primeira bola…')+'</p></div>';
 if(spinning(now))return '<div class="reveal"><p class="spinning">A RODAR…</p></div>';
 const c=S.challenges.find(x=>x.n===S.spin.n),ty=tdef(c),i=S.spin.i,d=S.draws[i],pl=C.playersFor(S,i),left=C.timerLeft(S,now);
@@ -880,7 +882,7 @@ h+='<div class="players">'+pl.map(t=>{const r=d.results[t.id];return '<span clas
 if(left!=null)h+='<div class="rtimer'+(left<=10000?' c':'')+'" data-rt>'+Math.ceil(left/1000)+'</div>';
 return h+turn+'</div>';}
 function drawnHTML(mod){if(!S.draws.length)return '';return '<div class="drawn" aria-label="Bolas que já saíram">'+S.draws.map((d,i)=>{const pl=C.playersFor(S,i),allOk=pl.length&&pl.every(t=>d.results[t.id]==='ok');const cls=allOk?'':' back';return mod?'<button class="'+cls+'" data-a="editBall" data-i="'+i+'" title="Corrigir a bola '+d.n+'">'+d.n+'</button>':'<span class="'+cls+'">'+d.n+'</span>';}).join('')+'</div><p class="note" style="margin-top:6px">As bolas a tracejado voltaram ao globo porque alguma equipa falhou.</p>';}
-function stageHTML(mod){const cur=S.spin&&!spinning(Date.now())?S.spin.n:null;const rem=C.remaining(S).length;
+function stageHTML(mod){const cur=S.spin&&!spinning(gnow())?S.spin.n:null;const rem=C.remaining(S).length;
 return railHTML()+'<div class="stage"><div><div class="globebox"><canvas id="globe" aria-label="Globo do bingo com '+rem+' bolas"></canvas><div class="pump" style="left:-2%;width:19%;bottom:2%">'+SVG.pumpkin+'</div><div class="pump" style="right:-2%;width:16%;bottom:2%">'+SVG.pumpkin+'</div></div><p class="mu" style="text-align:center;margin-top:6px">'+S.draws.length+' bola'+(S.draws.length===1?'':'s')+' tirada'+(S.draws.length===1?'':'s')+' · '+rem+' no globo</p>'+(mod?currentHTML(mod):'')+'</div><div>'+(mod?'<div class="cards">'+S.teams.map(t=>cardHTML(t,{cur})).join('')+'</div>'+scoreHTML()+drawnHTML(mod):'<div class="tvnow">'+currentHTML(false)+'</div><h2 class="lbl">CLASSIFICAÇÃO</h2><div class="tvscore">'+scoreHTML()+'</div>')+'</div></div>';}
 /* ---------- links + QR ---------- */
 function qrSVG(text,m){try{if(typeof qrcode!=='function')return '';const q=qrcode(0,'M');q.addData(text);q.make();return q.createSvgTag({cellSize:4,margin:m==null?1:m*4,scalable:true});}catch(e){return '';}}
@@ -906,13 +908,13 @@ h+='<details style="margin-top:4px"><summary>Logótipo e nome do evento ›</sum
 h+='<div class="card" style="text-align:center"><button class="or big" data-a="startAsk" style="width:min(420px,100%)">Começar o jogo ▶</button><p class="note" style="margin-top:10px">'+(locked<S.teams.length?(S.teams.length-locked)+' equipa(s) ainda não confirmaram o cartão.':'Todas as equipas escolheram o cartão.')+'</p></div></div></div>';
 return h;}
 /* ---------- 2. JOGO ---------- */
-function playView(){const now=Date.now(),sp=spinning(now);const c=S.spin&&S.challenges.find(x=>x.n===S.spin.n);const nt=null;const fulls=C.fullTeams(S);
+function playView(){const now=gnow(),sp=spinning(now);const c=S.spin&&S.challenges.find(x=>x.n===S.spin.n);const nt=null;const fulls=C.fullTeams(S);
 let h='<div class="wrap"><div class="head">'+logo()+'<div class="sp"></div>'+syncPill()+'<button class="ghost" data-a="links">📱 Links</button><button class="ghost" data-a="snd">'+(sound?'🔊 Som':'🔈 Som')+'</button><button class="ghost" data-a="tv">📺 Visão TV</button></div>'+stageHTML(true)+'</div>';
 h+='<div class="dock"><div class="dockin">';
 if(fulls.length)h+='<button class="or big" data-a="endAsk">🏆 Terminar: '+esc(fulls.map(f=>f.name).join(' e '))+' fez BINGO</button>';
 h+='<button class="'+(fulls.length?'':'or ')+'big spinbtn" style="--tc:'+(nt?nt.color:'#ff7a1a')+';--tt:'+ink(nt?nt.color:'#ff7a1a')+'" data-a="spin" '+(sp||!C.remaining(S).length?'disabled':'')+'>🚨 Rodar o globo'+'</button>';
 if(c&&!sp){const i=S.spin.i,d=S.draws[i];C.playersFor(S,i).forEach(t=>{const r=d.results[t.id];const qa=c.type==='pergunta'&&!c.open?myAns(t.id):null;h+='<div class="res" style="--tc:'+t.color+'"><b>'+esc(t.name)+'</b>'+(c.type==='pergunta'&&!c.open?'<span class="qa">'+(qa?'respondeu '+'ABC'[qa.choice]:'à espera…')+'</span>':'')+(isWheelType(c)&&r!=='ok'?((d.wh&&d.wh[t.id])?'<span class="qa" title="'+esc(d.wh[t.id].item)+'">'+(wLanded(d.wh[t.id])?'🎡 '+esc(String(d.wh[t.id].item).split(' — ')[0].slice(0,22)):'🎡 a rodar…')+'</span><button class="ghost" data-a="wheel" data-t="'+t.id+'" title="Rodar outra vez" '+(wSpinning()?'disabled':'')+'>↻</button>':'<button class="gr" data-a="wheel" data-t="'+t.id+'" '+(wSpinning()?'disabled':'')+'>🎡 Rodar</button>'):'')+'<button class="y'+(r==='ok'?' on':'')+'" data-a="res" data-t="'+t.id+'" data-v="ok">✔ Cumpriu</button><button class="n'+(r==='fail'?' on':'')+'" data-a="res" data-t="'+t.id+'" data-v="fail">✖ Falhou</button></div>';});
-h+=S.timer?(C.timerLeft(S,Date.now())===0?'<button class="gr" data-a="tStart">⏱ Recomeçar '+(S.secs[c.type]||30)+' s</button>':'')+'<button class="gr" data-a="tAdd">+30 s</button><button data-a="tStop">⏹ Parar tempo</button>':'<button class="gr" data-a="tStart">⏱ Iniciar '+(S.secs[c.type]||30)+' s</button>';
+h+=S.timer?(C.timerLeft(S,gnow())===0?'<button class="gr" data-a="tStart">⏱ Recomeçar '+(S.secs[c.type]||30)+' s</button>':'')+'<button class="gr" data-a="tAdd">+30 s</button><button data-a="tStop">⏹ Parar tempo</button>':'<button class="gr" data-a="tStart">⏱ Iniciar '+(S.secs[c.type]||30)+' s</button>';
 if(c.type==='pergunta'&&c.answer)h+=ui.showPriv?'<span class="privans">'+(c.open?'Resposta: ':'Certa: '+'ABC'[c.correct]+' · ')+esc(c.answer)+'</span><button class="ghost" data-a="ansAll">'+(S.showAnswer?'Esconder do ecrã':'Mostrar a todos')+'</button>':'<button class="ghost" data-a="priv">👁 Ver resposta</button>';}
 h+='<div class="sp"></div><span class="keys" title="Atalhos de teclado">⌨ Espaço rodar · G roda · T tempo · 1-8 cumpriu · R resposta</span><button class="ghost" data-a="undoAsk" '+(S.draws.length&&!sp?'':'disabled')+'>↶ Anular bola</button>'+(fulls.length?'':'<button class="danger" data-a="endAsk">Terminar</button>')+'</div></div>';
 return h;}
@@ -931,7 +933,7 @@ const teamIcon=t=>t&&t.icon||((C.COLORS.find(c=>c[1]===(t&&t.color))||[])[2])||'
 function rankRows(opts){opts=opts||{};const rk=C.ranking(S);return '<div class="rrows">'+rk.map(r=>{const t=S.teams.find(x=>x.id===r.tid);const med=r.rank<=3&&r.cells>0?'<span class="medal m'+r.rank+'">'+r.rank+'</span>':'<span class="medal mn">'+r.rank+'</span>';
 return '<div class="rrow'+(r.rank===1&&r.cells>0?' first':'')+(opts.me===r.tid?' me':'')+'" style="--tc:'+r.color+'">'+med+'<span class="avatar">'+teamIcon(t)+'</span><span class="rname">'+esc(r.name)+(r.full?' <b class="bingo-tag">BINGO</b>':r.lines?' <small>· '+r.lines+' linha'+(r.lines>1?'s':'')+'</small>':'')+'<span class="prog"><i style="width:'+(r.total?r.cells/r.total*100:0)+'%"></i></span></span><span class="rcells">'+r.cells+'<small>/'+r.total+'</small></span></div>';}).join('')+'</div>';}
 const fmtT=ms=>{const s=Math.ceil(ms/1000);return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');};
-function challengePanel(big,tid){const now=Date.now();
+function challengePanel(big,tid){const now=gnow();
 if(!S.spin)return '<div class="chwait">'+SVG.ghost+'<p>À espera da primeira bola…</p></div>';
 if(spinning(now))return '<div class="chwait"><div class="spinball"></div><p class="spinning" style="padding:6px 0">A RODAR…</p></div>';
 const c=S.challenges.find(x=>x.n===S.spin.n),ty=tdef(c),i=S.spin.i,d=S.draws[i],pl=C.playersFor(S,i),left=C.timerLeft(S,now);
@@ -966,17 +968,17 @@ return '<div class="wrap joinw">'+logo('team')+'<div class="npanel n-pur" style=
 /* ---------- EQUIPA (telemóvel) ---------- */
 function teamView(){const tid=teamHash(),t=S.teams.find(x=>x.id===tid);
 if(!t)return '<div class="wrap joinw"><div class="center splash">'+logo('team')+'<p style="margin-top:12px">Esta equipa já não existe neste jogo.</p><button class="lime big" data-a="toJoin">Escolher equipa</button></div></div>';
-const now=Date.now(),tab=ui.ttab||'bingo';const left=C.timerLeft(S,now);
+const now=gnow(),tab=ui.ttab||'bingo';const left=C.timerLeft(S,now);
 let h='<div class="wrap tw">'+((inArtifact()||SB)&&!online?'<div class="offline">A ligar ao jogo… Se não atualizar, confirma a internet e recarrega a página.</div>':'')+logo('team')+'<div class="tbar2"><div class="tpill sm'+(left!=null&&left<=10000?' c':'')+'"><small>TEMPO DO DESAFIO</small><span data-rt data-fmt="mm">'+(left!=null?fmtT(left):'--:--')+'</span></div><div class="myteam" style="--tc:'+t.color+'"><small>A TUA EQUIPA</small><b>'+esc(t.name)+'</b></div><span class="avatar big" style="--tc:'+t.color+'">'+teamIcon(t)+'</span></div>';
 if(tab==='bingo')h+=teamBingoTab(t);else if(tab==='desafio')h+='<div class="npanel n-pink"><h3>⚡ Desafio</h3>'+challengePanel(false,tid)+'</div>';
 else if(tab==='ranking')h+='<div class="npanel n-lime"><h3>🏆 Ranking ao vivo <span class="live">● LIVE</span></h3>'+rankRows({me:tid})+'</div>';
 else h+=rulesHTML();
 h+='</div><nav class="tabbar">'+[['bingo','🎃','Bingo'],['desafio','⚡','Desafio'],['ranking','🏆','Ranking'],['regras','📜','Regras']].map(x=>'<button class="'+(tab===x[0]?'on':'')+'" data-a="ttab" data-v="'+x[0]+'"><span>'+x[1]+'</span>'+x[2]+'</button>').join('')+'</nav>';
 return h;}
-function teamBingoTab(t){const tid=t.id,now=Date.now();let h='';
+function teamBingoTab(t){const tid=t.id,now=gnow();let h='';
 if(S.phase==='setup'){const card=cardFor(tid),ps=pickState(tid);
 h+=ps==='locked'?'<p class="pickmsg ok">✔ Cartão escolhido. Aguardem o início do jogo.</p>':'<p class="pickmsg">Escolham o vosso cartão. Podem trocar as vezes que quiserem até o jogo começar.</p>';
-h+='<div class="tcard'+(ui.fresh&&Date.now()-ui.fresh<600?' fresh':'')+'">'+cardHTML(t,{card})+'</div><div class="legend">'+Object.values(C.TYPES).map(x=>'<span>'+x.icon+' '+x.label+'</span>').join('')+'</div>';
+h+='<div class="tcard'+(ui.fresh&&gnow()-ui.fresh<600?' fresh':'')+'">'+cardHTML(t,{card})+'</div><div class="legend">'+Object.values(C.TYPES).map(x=>'<span>'+x.icon+' '+x.label+'</span>').join('')+'</div>';
 h+=ps==='locked'?'<div class="row" style="justify-content:center;margin-top:14px"><button class="ghost" data-a="unpick">Mudar de ideias</button></div>':'<div class="pickbtns"><button class="outline big" data-a="reroll">🔀 Outro cartão</button><button class="lime big" data-a="lock">✔ Queremos este!</button></div>';
 return h;}
 const rk=C.ranking(S),me=rk.find(r=>r.tid===tid);
@@ -1005,9 +1007,10 @@ return '<div class="ov" data-a="noE"><div class="mbox" role="dialog" aria-modal=
 return '';}
 /* ---------- relógio ---------- */
 let lastSec=null,wasSpin=false;
-function tick(){const now=Date.now();const els=document.querySelectorAll('[data-rt]');if(els.length){const l=C.timerLeft(S,now);if(l!=null){const sec=Math.ceil(l/1000);els.forEach(el=>{const v=el.dataset.fmt==='mm'?fmtT(l):String(sec);if(el.textContent!==v)el.textContent=v;el.classList.toggle('c',l<=10000);const pl=el.closest('.tpill');if(pl)pl.classList.toggle('c',l<=10000);});if(sec!==lastSec&&sec<=5&&sec>0)sfx.tick();if(sec===0&&lastSec===1)tone(220,.6,0,'sawtooth',.08);lastSec=sec;}}
+function tick(){const now=gnow();const els=document.querySelectorAll('[data-rt]');if(els.length){const l=C.timerLeft(S,now);if(l!=null){const sec=Math.ceil(l/1000);els.forEach(el=>{const v=el.dataset.fmt==='mm'?fmtT(l):String(sec);if(el.textContent!==v)el.textContent=v;el.classList.toggle('c',l<=10000);const pl=el.closest('.tpill');if(pl)pl.classList.toggle('c',l<=10000);});if(sec!==lastSec&&sec<=5&&sec>0)sfx.tick();if(sec===0&&lastSec===1)tone(220,.6,0,'sawtooth',.08);lastSec=sec;}}
 const sp=spinning(now);const was=wasSpin;wasSpin=sp;if(was&&!sp){render();autoValidate();}if(S.timer&&C.timerLeft(S,now)===0&&!tick.exp){tick.exp=S.timer.startedAt;render();autoValidate();}else if(!S.timer||tick.exp!==S.timer.startedAt){if(S.timer&&C.timerLeft(S,now)>0)tick.exp=null;}}
 setInterval(tick,200);
+setInterval(()=>{if(isOwner&&ref&&!writing&&S.phase==='playing')push();},5000);
 setInterval(()=>{if(isTV()&&S.phase==='ended'){const w=C.winner(S);if(w)rain([w.color,'#ffd23f','#b5ff2a','#fff','#a14dff'],4000);}},14000);
 /* ---------- ações ---------- */
 function ask(title,text,yes,fn,danger){ui.confirm={title,text,yes,fn,danger};render();}
@@ -1023,7 +1026,7 @@ rmTeam(el){act(s=>C.removeTeam(s,el.dataset.id));},
 shuffle(){act(s=>C.generateCards(s));toast('Cartões baralhados.','ok');},
 rmLogo(){act(s=>{s.logo=null;return{ok:true};});},
 startAsk(){const miss=S.teams.filter(t=>pickState(t.id)!=='locked');if(!miss.length)return act(s=>C.start(s,PICKS));ask('Começar sem todas as escolhas?',miss.map(t=>t.name).join(', ')+' ainda não confirmaram. Ficam com o cartão que está no ecrã delas.','Começar mesmo assim',s=>C.start(s,PICKS));},
-spin(){act(s=>C.spin(s,Date.now()));},
+spin(){act(s=>C.spin(s,gnow()));},
 res(el){const i=S.spin.i,t=el.dataset.t,v=el.dataset.v,d=S.draws[i];act(s=>C.setResult(s,i,t,d.results[t]===v?null:v));},
 resE(el){const i=+el.dataset.i,t=el.dataset.t,v=el.dataset.v,d=S.draws[i];act(s=>C.setResult(s,i,t,d.results[t]===v?null:v));},
 editBall(el){ui.edit=+el.dataset.i;render();},
@@ -1031,10 +1034,10 @@ noE(){ui.edit=null;render();},
 links(){ui.links=true;render();},
 noL(){ui.links=false;render();},
 copy(el){const t=S.teams.find(x=>x.id===el.dataset.id);if(!t)return;const link=teamLink(t);try{navigator.clipboard.writeText(link).then(()=>toast('Link de '+t.name+' copiado','ok'),()=>selectCode(t.id));}catch(e){selectCode(t.id);}},
-tStart(){act(s=>C.timerStart(s,Date.now()));},
+tStart(){act(s=>C.timerStart(s,gnow()));},
 tStop(){act(s=>C.timerStop(s));},
-tAdd(){act(s=>C.timerAdd(s,Date.now(),30));},
-wheel(el){if(!S.spin||spinning(Date.now())||wSpinning())return;act(s=>C.wheelSpin(s,S.spin.i,el.dataset.t,Date.now()));},
+tAdd(){act(s=>C.timerAdd(s,gnow(),30));},
+wheel(el){if(!S.spin||spinning(gnow())||wSpinning())return;act(s=>C.wheelSpin(s,S.spin.i,el.dataset.t,gnow()));},
 priv(){ui.showPriv=true;render();},
 ansAll(){act(s=>{s.showAnswer=!s.showAnswer;return{ok:true};});},
 undoAsk(){const l=S.draws[S.draws.length-1];ask('Anular a bola '+l.n+'?','Os resultados desta ronda são apagados e a vez de rodar volta à equipa anterior.','Anular bola',s=>C.undoSpin(s),true);},
@@ -1061,18 +1064,18 @@ joinGo(el){lsSet('bingo-minha-equipa',el.dataset.id);ui.ttab='bingo';location.ha
 toJoin(){ui.joinStep='teams';location.hash='jogar';},
 ttab(el){ui.ttab=el.dataset.v;render();scrollTo(0,0);},
 /* equipa */
-reroll(){const tid=teamHash();if(S.phase!=='setup')return;const cur=cardFor(tid),nc=C.randomCard(S,null,cur);if(!nc||nc.join()===cur.join())return toast('Não há outro cartão possível com as bolas deste jogo. Pede ao moderador para pôr mais bolas no globo.','er');ui.fresh=Date.now();writePick(tid,{card:nc,locked:false});toast('🔀 Novo cartão!','ok');},
+reroll(){const tid=teamHash();if(S.phase!=='setup')return;const cur=cardFor(tid),nc=C.randomCard(S,null,cur);if(!nc||nc.join()===cur.join())return toast('Não há outro cartão possível com as bolas deste jogo. Pede ao moderador para pôr mais bolas no globo.','er');ui.fresh=gnow();writePick(tid,{card:nc,locked:false});toast('🔀 Novo cartão!','ok');},
 lock(){const tid=teamHash();if(S.phase!=='setup')return;writePick(tid,{card:cardFor(tid),locked:true});toast('Cartão escolhido!','ok');},
 unpick(){const tid=teamHash();if(S.phase!=='setup')return;writePick(tid,{card:cardFor(tid),locked:false});}
 };
 document.addEventListener('click',e=>{const el=e.target.closest('[data-a]');if(!el||el.disabled)return;if(el.classList.contains('ov')&&e.target!==el)return;const f=A[el.dataset.a];if(f)f(el);});
 document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target&&e.target.id==='lg_pass'){doLogin();return;}if(e.key==='Escape'&&isMod()){ui.confirm=null;ui.edit=null;ui.links=false;render();return;}
 if(!isMod()||S.phase!=='playing'||ui.confirm||ui.edit!=null||ui.links)return;const tg=e.target;if(tg&&/^(INPUT|TEXTAREA|SELECT)$/.test(tg.tagName))return;if(e.ctrlKey||e.metaKey||e.altKey)return;
-const k=e.key.toLowerCase();if(k===' '||k==='enter'){e.preventDefault();if(!spinning(Date.now())&&C.remaining(S).length)A.spin();}
-else if(k==='t'){if(S.spin&&!spinning(Date.now()))S.timer?A.tStop():A.tStart();}
-else if(k==='g'){if(S.spin&&!spinning(Date.now())&&!wSpinning()){const d=S.draws[S.spin.i],nx=C.playersFor(S,S.spin.i).find(t=>!(d.wh&&d.wh[t.id])&&d.results[t.id]!=='ok');if(nx)A.wheel({dataset:{t:nx.id}});}}
+const k=e.key.toLowerCase();if(k===' '||k==='enter'){e.preventDefault();if(!spinning(gnow())&&C.remaining(S).length)A.spin();}
+else if(k==='t'){if(S.spin&&!spinning(gnow()))S.timer?A.tStop():A.tStart();}
+else if(k==='g'){if(S.spin&&!spinning(gnow())&&!wSpinning()){const d=S.draws[S.spin.i],nx=C.playersFor(S,S.spin.i).find(t=>!(d.wh&&d.wh[t.id])&&d.results[t.id]!=='ok');if(nx)A.wheel({dataset:{t:nx.id}});}}
 else if(k==='r'){const c=S.spin&&S.challenges.find(x=>x.n===S.spin.n);if(c&&c.type==='pergunta')A.ansAll();}
-else if(/^[1-8]$/.test(k)&&S.spin&&!spinning(Date.now())){const pl=C.playersFor(S,S.spin.i);const t=pl[+k-1];if(t){const d=S.draws[S.spin.i];act(s=>C.setResult(s,S.spin.i,t.id,d.results[t.id]==='ok'?null:'ok'));}}});
+else if(/^[1-8]$/.test(k)&&S.spin&&!spinning(gnow())){const pl=C.playersFor(S,S.spin.i);const t=pl[+k-1];if(t){const d=S.draws[S.spin.i];act(s=>C.setResult(s,S.spin.i,t.id,d.results[t.id]==='ok'?null:'ok'));}}});
 document.addEventListener('change',e=>{const el=e.target,ds=el.dataset;
 if(ds.tn!==undefined){const r=act(s=>C.setTeam(s,ds.tn,{name:el.value}));if(r.ok===false)render();}
 else if(ds.poolt){const r=act(s=>C.setPoolT(s,ds.poolt,+el.value));if(r.ok===false)render();}
